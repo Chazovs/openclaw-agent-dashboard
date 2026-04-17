@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docker
+data/
+*.log
+docker-compose.override.yml
+
+# Build outputs
+dist/
+build/
+*.tar.gz
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Docker volumes
+volumes/
+
+# Credentials
+credentials/
+*.pem
+*.key
+*.crt
+
+# OpenClaw workspace
+workspace-*/

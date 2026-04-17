@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  dashboard:
+    build: .
+    container_name: agent-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - /home/openclaw/.openclaw:/home/openclaw/.openclaw:ro
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - OPENCLAW_HOME=/home/openclaw/.openclaw
+    networks:
+      - agent-network
+
+networks:
+  agent-network:
+    driver: bridge

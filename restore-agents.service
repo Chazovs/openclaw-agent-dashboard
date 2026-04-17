@@ -1,0 +1,14 @@
+[Unit]
+Description=Restore agents for Agent Dashboard
+After=agent-dashboard.service
+Requires=agent-dashboard.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/openclaw/.openclaw/workspace/agent-dashboard
+ExecStart=/home/openclaw/.openclaw/workspace/agent-dashboard/restore-agents.sh
+User=openclaw
+Group=openclaw
+
+[Install]
+WantedBy=multi-user.target
