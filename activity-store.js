@@ -93,13 +93,43 @@ class ActivityStore {
           return true;
         }
         
-        // 3. Для реальных агентов OpenClaw: извлекаем базовый ID
+        // 3. Для реальных агентов OpenClaw: улучшенное сопоставление
         if (agentId.startsWith('real_')) {
-          const agentBaseId = agentId.split('_')[1]; // 'main' из real_main_...
-          const activityBaseId = activity.agentId ? activity.agentId.split('_')[1] : '';
+          // Извлекаем компоненты из ID агента
+          const agentParts = agentId.split('_');
+          // Пример: real_main_telegram_agent_main_telegram_direct_602894445
+          // Части: ['real', 'main', 'telegram', 'agent', 'main', 'telegram', 'direct', '602894445']
           
-          if (agentBaseId && activityBaseId && agentBaseId === activityBaseId) {
-            return true;
+          // Извлекаем базовые компоненты
+          const agentBase = agentParts[1]; // 'main'
+          const agentType = agentParts[2]; // 'telegram', 'subagent', 'main', etc.
+          
+          // Извлекаем компоненты из ID активности
+          const activityParts = activity.agentId ? activity.agentId.split('_') : [];
+          const activityBase = activityParts.length > 1 ? activityParts[1] : '';
+          const activityType = activityParts.length > 2 ? activityParts[2] : '';
+          
+          // Сопоставляем по базе и типу
+          if (agentBase && activityBase && agentBase === activityBase) {
+            // Если тип агента совпадает с типом активности
+            if (agentType && activityType && agentType === activityType) {
+              return true;
+            }
+            
+            // Для main агента: показываем все активности main
+            if (agentType === 'main' && activityType === 'main') {
+              return true;
+            }
+            
+            // Для telegram агента: показываем все telegram активности
+            if (agentType === 'telegram' && activityType === 'telegram') {
+              return true;
+            }
+            
+            // Для subagent агента: показываем все subagent активности
+            if (agentType === 'subagent' && activityType === 'subagent') {
+              return true;
+            }
           }
         }
         

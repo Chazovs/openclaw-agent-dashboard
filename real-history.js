@@ -220,10 +220,25 @@ class RealOpenClawHistory {
         return null;
     }
     
-    // Создаем активность
+    // Создаем активность с улучшенным agentId для лучшего сопоставления
+    // Формат: real_<base>_<type>_agent_<base>_<type>_<subtype>_<id>
+    // Пример: real_main_telegram_agent_main_telegram_direct_602894445
+    const agentIdParts = [
+      'real',
+      sessionInfo.agentId || 'main',
+      sessionInfo.sessionType || 'unknown',
+      'agent',
+      sessionInfo.agentId || 'main',
+      sessionInfo.sessionType || 'unknown',
+      sessionInfo.channel || 'direct',
+      sessionInfo.sessionId.substring(0, 8) || 'unknown'
+    ];
+    
+    const fullAgentId = agentIdParts.join('_');
+    
     return {
       id: `${sessionInfo.sessionId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      agentId: `real_${sessionInfo.agentId}_${sessionInfo.sessionType}`,
+      agentId: fullAgentId,
       agentName,
       action,
       details,
