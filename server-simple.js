@@ -4,6 +4,8 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const ActivityStore = require('./activity-store');
 const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -23,152 +25,168 @@ const activityStore = new ActivityStore();
 // Функция для получения реальных агентов из OpenClaw
 function getRealAgentsFromOpenClaw() {
   try {
-    console.log('Получение реальных агентов из OpenClaw...');
+    console.log('Получение РЕАЛЬНЫХ данных из OpenClaw...');
     
-    // Гибридный подход: реальные данные + демо
-    const fs = require('fs');
-    const path = require('path');
+    // Путь к файлу сессий
+    const sessionsFile = '/home/openclaw/.openclaw/agents/main/sessions/sessions.json';
     
-    // Проверяем доступность данных OpenClaw
-    const openclawDir = '/home/openclaw/.openclaw';
-    
-    if (!fs.existsSync(openclawDir)) {
-      console.log('Директория OpenClaw не найдена');
+    if (!fs.existsSync(sessionsFile)) {
+      console.log('Файл сессий OpenClaw не найден');
       return getDemoAgents();
     }
     
-    // Создаем гибридный список агентов
-    const hybridAgents = [];
+    // Читаем реальные данные
+    const sessionsContent = fs.readFileSync(sessionsFile, 'utf8');
+    const sessionsData = JSON.parse(sessionsContent);
     
-    // 1. Главный агент OpenClaw (всегда есть)
-    hybridAgents.push({
-      id: 'openclaw_main',
-      name: 'OpenClaw Main',
-      emoji: '🧠',
-      status: 'working',
-      sprite: '🟢',
-      workspace: 'openclaw',
-      lastSeen: new Date().toISOString(),
-      description: 'Основной агент системы OpenClaw',
-      metadata: { source: 'real', agentId: 'main' }
-    });
-    
-    // 2. Проверяем наличие под-агентов
-    const agentsDir = '/home/openclaw/.openclaw/agents';
-    if (fs.existsSync(agentsDir)) {
-      const agentDirs = fs.readdirSync(agentsDir)
-        .filter(item => {
-          const itemPath = path.join(agentsDir, item);
-          return fs.statSync(itemPath).isDirectory() && item !== 'main';
-        })
-        .slice(0, 5); // Максимум 5 дополнительных агентов
-      
-      agentDirs.forEach((agentDir, index) => {
-        hybridAgents.push({
-          id: `openclaw_${agentDir}`,
-          name: `Agent ${agentDir.substring(0, 8)}`,
-          emoji: index % 2 === 0 ? '🤖' : '🔄',
-          status: index === 0 ? 'working' : 'idle',
-          sprite: index === 0 ? '🟢' : '🟡',
-          workspace: 'agents',
-          lastSeen: new Date(Date.now() - index * 60000).toISOString(), // Разное время
-          description: `Агент OpenClaw: ${agentDir}`,
-          metadata: { source: 'real', agentId: agentDir }
-        });
-      });
+    if (!sessionsData || typeof sessionsData !== 'object') {
+      throw new Error('Некорректный формат данных сессий');
     }
     
-    // 3. Добавляем системные агенты если мало реальных
-    if (hybridAgents.length < 3) {
-      hybridAgents.push(...getDemoAgents().map(agent => ({
-        ...agent,
-        metadata: { ...agent.metadata, source: 'hybrid' }
-      })));
-    }
+    const sessions = sessionsData;
+    const sessionKeys = Object.keys(sessions);
     
-    console.log(`Создано ${hybridAgents.length} гибридных агентов`);
-    return hybridAgents;
+    console.log(`Найдено ${sessionKeys.length} реальных сессий OpenClaw`);
     
-    console.log(`Получено ${sessionsData.sessions.length} сессий из OpenClaw`);
-    
-    // Группируем сессии по agentId
-    const sessionsByAgent = {};
-    sessionsData.sessions.forEach(session => {
-      const agentId = session.agentId || 'unknown';
-      if (!sessionsByAgent[agentId]) {
-        sessionsByAgent[agentId] = [];
-      }
-      sessionsByAgent[agentId].push(session);
-    });
-    
-    // Создаем агентов на основе реальных данных
+    // Создаем реальных агентов
     const realAgents = [];
     
-    for (const [agentId, sessions] of Object.entries(sessionsByAgent)) {
-      // Находим самую свежую сессию
-      const latestSession = sessions.reduce((latest, current) => {
-        return current.updatedAt > latest.updatedAt ? current : latest;
-      });
-      
-      // Определяем статус на основе активности
-      const ageMs = Date.now() - latestSession.updatedAt;
-      let status = 'idle';
-      if (ageMs < 5 * 60 * 1000) { // 5 минут
-        status = 'working';
-      } else if (ageMs > 60 * 60 * 1000) { // 1 час
-        status = 'sleeping';
-      }
-      
-      // Определяем тип и имя агента
-      let name, emoji, description, workspace;
-      
-      if (agentId === 'main') {
-        name = 'Клод (OpenClaw)';
-        emoji = '🧠';
-        description = 'Главный агент OpenClaw';
-        workspace = 'main';
-      } else if (latestSession.kind === 'cron') {
-        name = `Cron Agent ${agentId.substring(0, 8)}`;
-        emoji = '⏰';
-        description = 'Автоматизированный агент OpenClaw';
-        workspace = 'automation';
-      } else if (latestSession.kind === 'subagent') {
-        name = `Sub-Agent ${agentId.substring(0, 8)}`;
-        emoji = '🔄';
-        description = 'Суб-агент OpenClaw';
-        workspace = 'subagents';
-      } else {
-        name = `Agent ${agentId}`;
-        emoji = '🤖';
-        description = 'Агент OpenClaw';
-        workspace = 'openclaw';
-      }
-      
-      // Спрайт для статуса
-      const sprite = status === 'working' ? '🟢' : 
-                    status === 'idle' ? '🟡' : 
-                    status === 'sleeping' ? '⚫' : '🔴';
-      
-      realAgents.push({
-        id: `openclaw_${agentId}`,
-        name,
-        emoji,
-        status,
-        sprite,
-        workspace,
-        lastSeen: new Date(latestSession.updatedAt).toISOString(),
-        description,
-        metadata: {
-          agentId,
-          sessionCount: sessions.length,
-          model: latestSession.model,
-          kind: latestSession.kind,
-          ageMs
+    for (const sessionKey of sessionKeys) {
+      try {
+        const session = sessions[sessionKey];
+        
+        // Извлекаем информацию из ключа сессии
+        // Формат: agent:main:telegram:direct:602894445
+        const parts = sessionKey.split(':');
+        const agentId = parts[1] || 'main';
+        const sessionType = parts[2] || 'direct';
+        
+        // Определяем РЕАЛЬНЫЙ статус
+        let status = 'unknown';
+        if (session.status === 'running') {
+          status = 'working';
+        } else if (session.abortedLastRun) {
+          status = 'error';
+        } else {
+          // Определяем по времени
+          const ageMs = Date.now() - session.updatedAt;
+          if (ageMs < 5 * 60 * 1000) { // 5 минут
+            status = 'working';
+          } else if (ageMs < 60 * 60 * 1000) { // 1 час
+            status = 'idle';
+          } else {
+            status = 'sleeping';
+          }
         }
-      });
+        
+        // РЕАЛЬНЫЕ метрики
+        const realMetrics = {
+          inputTokens: session.inputTokens || 0,
+          outputTokens: session.outputTokens || 0,
+          totalTokens: session.totalTokens || 0,
+          model: session.model || 'unknown',
+          modelProvider: session.modelProvider || 'unknown',
+          contextTokens: session.contextTokens || 0,
+          updatedAt: new Date(session.updatedAt).toISOString(),
+          ageMs: Date.now() - session.updatedAt,
+          channel: session.lastChannel || session.deliveryContext?.channel || 'unknown',
+          origin: session.origin?.provider || 'unknown'
+        };
+        
+        // Определяем имя на основе реальных данных
+        let name = 'OpenClaw Agent';
+        if (sessionType === 'telegram') {
+          name = 'Telegram Bot';
+          if (realMetrics.channel && realMetrics.channel !== 'unknown') {
+            name = `Telegram (${realMetrics.channel})`;
+          }
+        } else if (sessionType === 'cron') {
+          name = 'Cron Agent';
+        } else if (sessionType === 'subagent') {
+          name = 'Sub-Agent';
+        } else if (agentId === 'main') {
+          name = 'Клод (OpenClaw)';
+        }
+        
+        // Emoji на основе типа
+        const emoji = sessionType === 'telegram' ? '📱' :
+                     sessionType === 'cron' ? '⏰' :
+                     sessionType === 'subagent' ? '🔄' :
+                     agentId === 'main' ? '🧠' : '🤖';
+        
+        // Спрайт статуса
+        const sprite = status === 'working' ? '🟢' :
+                      status === 'idle' ? '🟡' :
+                      status === 'sleeping' ? '⚫' :
+                      status === 'error' ? '🔴' : '⚪';
+        
+        // Workspace
+        const workspace = sessionType === 'telegram' ? 'messaging' :
+                         sessionType === 'cron' ? 'automation' :
+                         sessionType === 'subagent' ? 'subagents' :
+                         agentId === 'main' ? 'core' : 'openclaw';
+        
+        // Описание с реальными метриками
+        const description = realMetrics.model !== 'unknown' ? 
+          `${name}, модель: ${realMetrics.model}, токенов: ${realMetrics.totalTokens}` :
+          `${name}, сессия OpenClaw`;
+        
+        // Создаем РЕАЛЬНОГО агента
+        const realAgent = {
+          id: `real_${agentId}_${sessionType}_${sessionKey.replace(/[^a-zA-Z0-9]/g, '_')}`,
+          name,
+          emoji,
+          status,
+          sprite,
+          workspace,
+          lastSeen: new Date(session.updatedAt).toISOString(),
+          description,
+          realMetrics,
+          metadata: {
+            source: 'real_openclaw',
+            agentId,
+            sessionType,
+            sessionKey,
+            sessionId: session.sessionId,
+            isReal: true,
+            dataSource: 'sessions.json',
+            timestamp: new Date().toISOString()
+          }
+        };
+        
+        realAgents.push(realAgent);
+        
+      } catch (error) {
+        console.log(`Ошибка обработки сессии ${sessionKey}:`, error.message);
+      }
     }
     
-    console.log(`Создано ${realAgents.length} реальных агентов`);
+    console.log(`Создано ${realAgents.length} РЕАЛЬНЫХ агентов из OpenClaw`);
+    
+    // Если реальных агентов нет, возвращаем демо
+    if (realAgents.length === 0) {
+      console.log('Нет реальных агентов, возвращаем демо');
+      return getDemoAgents();
+    }
+    
+    // Добавляем системную информацию как отдельного агента
+    realAgents.push({
+      id: 'system_monitor',
+      name: 'System Monitor',
+      emoji: '📊',
+      status: 'working',
+      sprite: '🟢',
+      workspace: 'system',
+      lastSeen: new Date().toISOString(),
+      description: 'Мониторинг системы OpenClaw',
+      metadata: {
+        source: 'system',
+        agentCount: realAgents.length,
+        sessionCount: sessionKeys.length,
+        isReal: true
+      }
+    });
+    
     return realAgents;
     
   } catch (error) {
