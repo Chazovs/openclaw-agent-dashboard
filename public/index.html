@@ -528,28 +528,37 @@
             filteredAgents.forEach(agent => {
                 const card = document.createElement('div');
                 card.className = 'agent-card';
-                card.dataset.agentId = agent.id;
+                card.dataset.agentId = agent.id || 'unknown';
+                
+                // Проверяем и устанавливаем значения по умолчанию
+                const agentEmoji = agent.emoji || '🤖';
+                const agentName = agent.name || 'Неизвестный агент';
+                const agentId = agent.id || 'unknown';
+                const agentStatus = agent.status || 'unknown';
+                const agentWorkspace = agent.workspace || 'unknown';
+                const agentDescription = agent.description || 'Нет описания';
+                const agentLastSeen = agent.lastSeen ? new Date(agent.lastSeen).toLocaleString() : 'Неизвестно';
                 
                 // Status class
-                const statusClass = `status-${agent.status}`;
+                const statusClass = `status-${agentStatus}`;
                 
                 card.innerHTML = `
                     <div class="agent-header">
-                        <div class="pixel-avatar">${agent.emoji}</div>
+                        <div class="pixel-avatar">${agentEmoji}</div>
                         <div class="agent-info">
-                            <h3>${agent.name}</h3>
-                            <div class="agent-id">ID: ${agent.id}</div>
+                            <h3>${agentName}</h3>
+                            <div class="agent-id">ID: ${agentId}</div>
                         </div>
                     </div>
                     <div class="status-text">
                         <span class="status-indicator ${statusClass}"></span>
-                        <span>${getStatusText(agent.status)}</span>
+                        <span>${getStatusText(agentStatus)}</span>
                     </div>
                     <div class="agent-details">
-                        <p><strong>Рабочее пространство:</strong> ${agent.workspace}</p>
-                        <p><strong>Описание:</strong> ${agent.description}</p>
-                        <p><strong>Последняя активность:</strong> ${new Date(agent.lastSeen).toLocaleString()}</p>
-                        <button onclick="loadActivityHistory('${agent.id}', '${agent.name}')" 
+                        <p><strong>Рабочее пространство:</strong> ${agentWorkspace}</p>
+                        <p><strong>Описание:</strong> ${agentDescription}</p>
+                        <p><strong>Последняя активность:</strong> ${agentLastSeen}</p>
+                        <button onclick="loadActivityHistory('${agentId}', '${agentName}')" 
                                 class="filter-input" 
                                 style="margin-top: 10px; cursor: pointer; width: 100%;">
                             📊 Показать историю активности
@@ -609,14 +618,46 @@
                     item.className = 'activity-item';
                     
                     const time = new Date(activity.timestamp).toLocaleString();
-                    const duration = activity.duration ? ` (${Math.round(activity.duration / 60000)} мин)` : '';
-                    const statusClass = `status-${activity.status}`;
+                    
+                    // Определяем текст активности
+                    let activityText = 'Неизвестная активность';
+                    let status = 'unknown';
+                    
+                    if (activity.task) {
+                        // Старый формат (демо данные)
+                        activityText = activity.task;
+                        status = activity.status || 'unknown';
+                    } else if (activity.action) {
+                        // Новый формат (реальные данные из OpenClaw)
+                        const actionMap = {
+                            'message_sent': '📤 Отправлено сообщение',
+                            'message_received': '📥 Получено сообщение',
+                            'tool_executed': '🛠️ Использован инструмент',
+                            'tool_result': '📊 Получен результат инструмента',
+                            'session_started': '🚀 Запущена сессия',
+                            'thinking': '🤔 Обработка запроса',
+                            'unknown': '❓ Неизвестное действие'
+                        };
+                        
+                        activityText = actionMap[activity.action] || `Действие: ${activity.action}`;
+                        status = 'working'; // По умолчанию для реальных действий
+                        
+                        // Добавляем детали если есть
+                        if (activity.details && activity.details.content) {
+                            const shortContent = activity.details.content.substring(0, 80);
+                            activityText += `: "${shortContent}..."`;
+                        } else if (activity.details && activity.details.toolName) {
+                            activityText += `: ${activity.details.toolName}`;
+                        }
+                    }
+                    
+                    const statusClass = `status-${status}`;
                     
                     item.innerHTML = `
-                        <div class="activity-time">${time}${duration}</div>
+                        <div class="activity-time">${time}</div>
                         <div class="activity-task">
                             <span class="status-indicator ${statusClass}"></span>
-                            ${activity.task}
+                            ${activityText}
                             ${activity.source ? `<small style="color: #a9a9a9; margin-left: 10px;">[${activity.source}]</small>` : ''}
                         </div>
                     `;
