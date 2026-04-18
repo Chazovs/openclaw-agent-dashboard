@@ -449,26 +449,35 @@
             filteredAgents.forEach(agent => {
                 const card = document.createElement('div');
                 card.className = 'agent-card';
-                card.dataset.agentId = agent.id;
+                card.dataset.agentId = agent.id || 'unknown';
+                
+                // Проверяем и устанавливаем значения по умолчанию
+                const agentEmoji = agent.emoji || '🤖';
+                const agentName = agent.name || 'Неизвестный агент';
+                const agentId = agent.id || 'unknown';
+                const agentStatus = agent.status || 'unknown';
+                const agentWorkspace = agent.workspace || 'unknown';
+                const agentDescription = agent.description || 'Нет описания';
+                const agentLastSeen = agent.lastSeen ? new Date(agent.lastSeen).toLocaleString() : 'Неизвестно';
                 
                 // Status class
-                const statusClass = `status-${agent.status}`;
+                const statusClass = `status-${agentStatus}`;
                 
                 card.innerHTML = `
                     <div class="agent-header">
-                        <div class="pixel-avatar">${agent.emoji}</div>
+                        <div class="pixel-avatar">${agentEmoji}</div>
                         <div class="agent-info">
-                            <h3>${agent.name}</h3>
-                            <div class="agent-id">ID: ${agent.id}</div>
+                            <h3>${agentName}</h3>
+                            <div class="agent-id">ID: ${agentId}</div>
                         </div>
                     </div>
                     <div class="status-text">
                         <span class="status-indicator ${statusClass}"></span>
-                        <span>${getStatusText(agent.status)}</span>
+                        <span>${getStatusText(agentStatus)}</span>
                     </div>
                     <div class="agent-details">
-                        <p><strong>Рабочее пространство:</strong> ${agent.workspace}</p>
-                        <p><strong>Описание:</strong> ${agent.description}</p>
-                        <p><strong>Последняя активность:</strong> ${new Date(agent.lastSeen).toLocaleString()}</p>
-                        <button onclick="loadActivityHistory('${agent.id}', '${agent.name}')" 
+                        <p><strong>Рабочее пространство:</strong> ${agentWorkspace}</p>
+                        <p><strong>Описание:</strong> ${agentDescription}</p>
+                        <p><strong>Последняя активность:</strong> ${agentLastSeen}</p>
+                        <button onclick="loadActivityHistory('${agentId}', '${agentName}')" 
                                 class="filter-input" 
