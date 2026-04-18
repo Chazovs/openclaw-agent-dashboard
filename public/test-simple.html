@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тест дашборда</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Тест подключения к API дашборда</h1>
+    
+    <div id="status">Проверка подключения...</div>
+    <div id="agents"></div>
+    
+    <script>
+        async function testConnection() {
+            const status = document.getElementById('status');
+            const agentsDiv = document.getElementById('agents');
+            
+            try {
+                status.innerHTML = 'Запрос к /api/agents...';
+                const response = await fetch('/api/agents');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const agents = await response.json();
+                
+                status.innerHTML = `<span class="success">✅ API работает! Получено ${agents.length} агентов</span>`;
+                
+                agentsDiv.innerHTML = '<h2>Агенты:</h2>';
+                agents.forEach(agent => {
+                    agentsDiv.innerHTML += `
+                        <div style="border: 1px solid #ccc; padding: 10px; margin: 5px;">
+                            <strong>${agent.name}</strong> (${agent.id})<br>
+                            Статус: ${agent.status}<br>
+                            Описание: ${agent.description}
+                        </div>
+                    `;
+                });
+                
+            } catch (error) {
+                status.innerHTML = `<span class="error">❌ Ошибка: ${error.message}</span>`;
+                agentsDiv.innerHTML = `<p>Проверьте что сервер запущен на порту 3000</p>`;
+            }
+        }
+        
+        // Запускаем тест при загрузке
+        window.addEventListener('load', testConnection);
+    </script>
+</body>
+</html>

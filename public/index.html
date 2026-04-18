@@ -475,9 +475,7 @@
         // Apply filters
         function applyFilters() {
             const container = document.getElementById('agents-container');
-            const searchFilter = document.getElementById
-<script>
-').value.toLowerCase();
+            const searchFilter = document.getElementById('search-filter').value.toLowerCase();
             const statusFilter = document.getElementById('status-filter').value;
             const workspaceFilter = document.getElementById('workspace-filter').value;
             const sortFilter = document.getElementById('sort-filter')?.value || 'name';
