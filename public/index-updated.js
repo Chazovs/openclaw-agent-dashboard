@@ -132,14 +132,46 @@
                     item.className = 'activity-item';
                     
                     const time = new Date(activity.timestamp).toLocaleString();
-                    const duration = activity.duration ? ` (${Math.round(activity.duration / 60000)} мин)` : '';
-                    const statusClass = `status-${activity.status}`;
+                    
+                    // Определяем текст активности
+                    let activityText = 'Неизвестная активность';
+                    let status = 'unknown';
+                    
+                    if (activity.task) {
+                        // Старый формат (демо данные)
+                        activityText = activity.task;
+                        status = activity.status || 'unknown';
+                    } else if (activity.action) {
+                        // Новый формат (реальные данные из OpenClaw)
+                        const actionMap = {
+                            'message_sent': '📤 Отправлено сообщение',
+                            'message_received': '📥 Получено сообщение',
+                            'tool_executed': '🛠️ Использован инструмент',
+                            'tool_result': '📊 Получен результат инструмента',
+                            'session_started': '🚀 Запущена сессия',
+                            'thinking': '🤔 Обработка запроса',
+                            'unknown': '❓ Неизвестное действие'
+                        };
+                        
+                        activityText = actionMap[activity.action] || `Действие: ${activity.action}`;
+                        status = 'working'; // По умолчанию для реальных действий
+                        
+                        // Добавляем детали если есть
+                        if (activity.details && activity.details.content) {
+                            const shortContent = activity.details.content.substring(0, 80);
+                            activityText += `: "${shortContent}..."`;
+                        } else if (activity.details && activity.details.toolName) {
+                            activityText += `: ${activity.details.toolName}`;
+                        }
+                    }
+                    
+                    const statusClass = `status-${status}`;
                     
                     item.innerHTML = `
-                        <div class="activity-time">${time}${duration}</div>
+                        <div class="activity-time">${time}</div>
                         <div class="activity-task">
                             <span class="status-indicator ${statusClass}"></span>
-                            ${activity.task}
+                            ${activityText}
                             ${activity.source ? `<small style="color: #a9a9a9; margin-left: 10px;">[${activity.source}]</small>` : ''}
                         </div>
                     `;
