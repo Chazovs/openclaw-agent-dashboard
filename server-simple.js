@@ -163,13 +163,13 @@ function getRealAgentsFromOpenClaw() {
     
     console.log(`Создано ${realAgents.length} РЕАЛЬНЫХ агентов из OpenClaw`);
     
-    // Если реальных агентов нет, возвращаем демо
+    // Если реальных агентов нет - пустой массив (НЕТ демо)
     if (realAgents.length === 0) {
-      console.log('Нет реальных агентов, возвращаем демо');
-      return getDemoAgents();
+      console.log('Нет реальных агентов в OpenClaw');
+      return [];
     }
     
-    // Добавляем системную информацию как отдельного агента
+    // Добавляем системную информацию как отдельного агента (только если есть реальные агенты)
     realAgents.push({
       id: 'system_monitor',
       name: 'System Monitor',

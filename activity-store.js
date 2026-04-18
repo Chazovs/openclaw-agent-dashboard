@@ -69,28 +69,31 @@ class ActivityStore {
     return activityEntry;
   }
   
-  // Получить активность агента (РЕАЛЬНЫЕ данные из OpenClaw)
+  // Получить активность агента (ТОЛЬКО реальные данные из OpenClaw)
   getAgentActivity(agentId, limit = 20) {
     try {
-      // Пытаемся получить РЕАЛЬНЫЕ данные для этого агента
+      // Получаем ТОЛЬКО реальные данные из OpenClaw
       const realActivities = this.realHistory.getRealActivityHistory(limit * 3);
       
-      // Улучшенная фильтрация для реальных агентов OpenClaw
+      if (realActivities.length === 0) {
+        console.log(`Нет реальных данных в OpenClaw для любого агента`);
+        return [];
+      }
+      
+      // Фильтруем для конкретного агента
       const agentRealActivities = realActivities.filter(activity => {
         // 1. Прямое совпадение ID
         if (activity.agentId === agentId) {
           return true;
         }
         
-        // 2. Совпадение по имени агента (без учета регистра)
+        // 2. Совпадение по имени агента
         const agentName = activity.agentName || '';
         if (agentName.toLowerCase().includes(agentId.toLowerCase())) {
           return true;
         }
         
         // 3. Для реальных агентов OpenClaw: извлекаем базовый ID
-        // Формат ID реальных агентов: real_main_telegram_agent_main_telegram_direct_602894445
-        // Берем часть после real_ и до следующего _
         if (agentId.startsWith('real_')) {
           const agentBaseId = agentId.split('_')[1]; // 'main' из real_main_...
           const activityBaseId = activity.agentId ? activity.agentId.split('_')[1] : '';
@@ -100,7 +103,7 @@ class ActivityStore {
           }
         }
         
-        // 4. Для Telegram агентов: проверяем по channel
+        // 4. Для Telegram агентов
         const agentMetadata = activity.metadata || {};
         if (agentMetadata.channel === 'telegram' && agentId.includes('telegram')) {
           return true;
@@ -114,8 +117,8 @@ class ActivityStore {
         return agentRealActivities.slice(0, limit);
       }
       
-      // Если реальных данных нет, возвращаем пустой массив (НЕ создаем демо)
-      console.log(`Нет реальных данных для агента ${agentId}, возвращаем пустой массив`);
+      // Если для этого агента нет реальных данных - пустой массив
+      console.log(`Нет реальных данных для агента ${agentId}`);
       return [];
         
     } catch (error) {
@@ -124,10 +127,10 @@ class ActivityStore {
     }
   }
   
-  // Получить недавнюю активность (РЕАЛЬНЫЕ данные из OpenClaw)
+  // Получить недавнюю активность (ТОЛЬКО реальные данные из OpenClaw)
   getRecentActivity(limit = 20) {
     try {
-      // Пытаемся получить РЕАЛЬНЫЕ данные из OpenClaw
+      // Получаем ТОЛЬКО реальные данные из OpenClaw
       const realActivities = this.realHistory.getRealActivityHistory(limit);
       
       if (realActivities.length > 0) {
@@ -135,37 +138,20 @@ class ActivityStore {
         return realActivities;
       }
       
-      // Если реальных данных нет, используем демо
-      console.log('Нет реальных данных, используем демо историю');
-      const allActivities = [];
-      
-      for (const agentId in this.activities) {
-        const agentActivities = this.activities[agentId];
-        if (agentActivities && agentActivities.length > 0) {
-          const latest = agentActivities[agentActivities.length - 1];
-          allActivities.push({
-            agentId,
-            ...latest
-          });
-        }
-      }
-      
-      // Сортируем по времени (новые сначала)
-      return allActivities
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, limit);
+      // Если реальных данных нет - пустой массив (НЕТ демо)
+      console.log('Нет реальных данных в OpenClaw');
+      return [];
         
     } catch (error) {
       console.error('Ошибка получения реальной истории:', error);
-      // Fallback на пустой массив
       return [];
     }
   }
   
-  // Получить статистику активности (РЕАЛЬНЫЕ данные из OpenClaw)
+  // Получить статистику активности (ТОЛЬКО реальные данные из OpenClaw)
   getActivityStats() {
     try {
-      // Пытаемся получить РЕАЛЬНУЮ статистику из OpenClaw
+      // Получаем ТОЛЬКО реальную статистику из OpenClaw
       const realStats = this.realHistory.getRealActivityStats();
       
       if (realStats.success && realStats.stats.totalActivities > 0) {
@@ -177,51 +163,17 @@ class ActivityStore {
         };
       }
       
-      // Если реальных данных нет, используем демо
-      console.log('Нет реальной статистики, используем демо');
-      const allActivities = [];
-      
-      for (const agentId in this.activities) {
-        const agentActivities = this.activities[agentId];
-        if (agentActivities && agentActivities.length > 0) {
-          agentActivities.forEach(activity => {
-            allActivities.push({
-              agentId,
-              ...activity
-            });
-          });
-        }
-      }
-      
-      const stats = {
-        source: 'demo',
-        totalActivities: allActivities.length,
+      // Если реальных данных нет - пустая статистика (НЕТ демо)
+      console.log('Нет реальной статистики в OpenClaw');
+      return {
+        source: 'real_openclaw_empty',
+        totalActivities: 0,
         byAgent: {},
         byAction: {},
-        recent24h: 0
+        recent24h: 0,
+        topAgents: [],
+        topActions: []
       };
-      
-      allActivities.forEach(activity => {
-        stats.byAgent[activity.agentName] = (stats.byAgent[activity.agentName] || 0) + 1;
-        stats.byAction[activity.action] = (stats.byAction[activity.action] || 0) + 1;
-        
-        const ageMs = Date.now() - new Date(activity.timestamp).getTime();
-        if (ageMs < 24 * 60 * 60 * 1000) {
-          stats.recent24h++;
-        }
-      });
-      
-      stats.topAgents = Object.entries(stats.byAgent)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([name, count]) => ({ name, count }));
-      
-      stats.topActions = Object.entries(stats.byAction)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([action, count]) => ({ action, count }));
-      
-      return stats;
       
     } catch (error) {
       console.error('Ошибка получения реальной статистики:', error);
@@ -230,7 +182,9 @@ class ActivityStore {
         totalActivities: 0,
         byAgent: {},
         byAction: {},
-        recent24h: 0
+        recent24h: 0,
+        topAgents: [],
+        topActions: []
       };
     }
   }
