@@ -2,7 +2,7 @@
   "name": "agent-dashboard",
   "version": "1.0.0",
   "description": "Simple pixel-art dashboard for OpenClaw agents",
-  "main": "server.js",
+  "main": "server-simple.js",
   "scripts": {
     "start": "node server-simple.js",
     "dev": "nodemon server-simple.js",
