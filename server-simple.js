@@ -309,38 +309,11 @@ app.get('/api/agents/:id/activity', (req, res) => {
       return res.status(404).json({ error: 'Agent not found' });
     }
     
-    // Получаем реальную историю активности
+    // Получаем РЕАЛЬНУЮ историю активности из OpenClaw
     const activities = activityStore.getAgentActivity(agentId, 50);
     
-    // Если истории нет, создаем начальные записи на основе статуса агента
-    if (activities.length === 0) {
-      const initialActivities = [
-        {
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          status: agent.status,
-          task: 'Инициализация агента в системе',
-          duration: 0,
-          source: 'system'
-        },
-        {
-          timestamp: new Date().toISOString(),
-          status: agent.status,
-          task: 'Агент активен в дашборде',
-          duration: 0,
-          source: 'dashboard'
-        }
-      ];
-      
-      initialActivities.forEach(activity => {
-        activityStore.addActivity(agentId, activity);
-      });
-      
-      // Получаем обновленную историю
-      const updatedActivities = activityStore.getAgentActivity(agentId, 50);
-      res.json(updatedActivities);
-    } else {
-      res.json(activities);
-    }
+    // Всегда возвращаем реальные данные (даже если пустой массив)
+    res.json(activities);
     
   } catch (err) {
     console.error('Error in /api/agents/:id/activity:', err);

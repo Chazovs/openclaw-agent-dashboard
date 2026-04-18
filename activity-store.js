@@ -73,30 +73,54 @@ class ActivityStore {
   getAgentActivity(agentId, limit = 20) {
     try {
       // Пытаемся получить РЕАЛЬНЫЕ данные для этого агента
-      const realActivities = this.realHistory.getRealActivityHistory(limit * 2);
+      const realActivities = this.realHistory.getRealActivityHistory(limit * 3);
       
-      // Фильтруем по agentId
-      const agentRealActivities = realActivities.filter(activity => 
-        activity.agentId === agentId || 
-        activity.agentName.toLowerCase().includes(agentId.toLowerCase())
-      );
+      // Улучшенная фильтрация для реальных агентов OpenClaw
+      const agentRealActivities = realActivities.filter(activity => {
+        // 1. Прямое совпадение ID
+        if (activity.agentId === agentId) {
+          return true;
+        }
+        
+        // 2. Совпадение по имени агента (без учета регистра)
+        const agentName = activity.agentName || '';
+        if (agentName.toLowerCase().includes(agentId.toLowerCase())) {
+          return true;
+        }
+        
+        // 3. Для реальных агентов OpenClaw: извлекаем базовый ID
+        // Формат ID реальных агентов: real_main_telegram_agent_main_telegram_direct_602894445
+        // Берем часть после real_ и до следующего _
+        if (agentId.startsWith('real_')) {
+          const agentBaseId = agentId.split('_')[1]; // 'main' из real_main_...
+          const activityBaseId = activity.agentId ? activity.agentId.split('_')[1] : '';
+          
+          if (agentBaseId && activityBaseId && agentBaseId === activityBaseId) {
+            return true;
+          }
+        }
+        
+        // 4. Для Telegram агентов: проверяем по channel
+        const agentMetadata = activity.metadata || {};
+        if (agentMetadata.channel === 'telegram' && agentId.includes('telegram')) {
+          return true;
+        }
+        
+        return false;
+      });
       
       if (agentRealActivities.length > 0) {
         console.log(`Используем ${agentRealActivities.length} реальных записей для агента ${agentId}`);
         return agentRealActivities.slice(0, limit);
       }
       
-      // Если реальных данных нет, используем демо
-      console.log(`Нет реальных данных для агента ${agentId}, используем демо`);
-      return this.activities[agentId] ? 
-        this.activities[agentId].slice(-limit).reverse() : 
-        [];
+      // Если реальных данных нет, возвращаем пустой массив (НЕ создаем демо)
+      console.log(`Нет реальных данных для агента ${agentId}, возвращаем пустой массив`);
+      return [];
         
     } catch (error) {
       console.error(`Ошибка получения реальной истории для агента ${agentId}:`, error);
-      return this.activities[agentId] ? 
-        this.activities[agentId].slice(-limit).reverse() : 
-        [];
+      return [];
     }
   }
   
