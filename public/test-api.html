@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API Connection</title>
+    <style>
+        body { font-family: monospace; background: #1a1a2e; color: white; padding: 20px; }
+        .success { color: #4cc9f0; }
+        .error { color: #f05454; }
+        pre { background: #16213e; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test API Connection</h1>
+    
+    <div id="status">Testing...</div>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            const status = document.getElementById('status');
+            const result = document.getElementById('result');
+            
+            try {
+                status.innerHTML = 'Fetching /api/agents...';
+                
+                const response = await fetch('/api/agents');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const agents = await response.json();
+                
+                status.innerHTML = `<span class="success">✅ API работает! Получено ${agents.length} агентов</span>`;
+                
+                result.innerHTML = `<h3>Агенты:</h3><pre>${JSON.stringify(agents, null, 2)}</pre>`;
+                
+                // Test WebSocket connection
+                status.innerHTML += '<br>Testing WebSocket...';
+                
+                const socket = new WebSocket(`ws://${window.location.host}`);
+                
+                socket.onopen = () => {
+                    status.innerHTML += '<br><span class="success">✅ WebSocket подключен</span>';
+                    socket.close();
+                };
+                
+                socket.onerror = (error) => {
+                    status.innerHTML += `<br><span class="error">❌ WebSocket ошибка: ${error}</span>`;
+                };
+                
+            } catch (error) {
+                status.innerHTML = `<span class="error">❌ Ошибка: ${error.message}</span>`;
+                result.innerHTML = `<pre>${error.stack}</pre>`;
+            }
+        }
+        
+        // Run test when page loads
+        window.addEventListener('load', testAPI);
+    </script>
+</body>
+</html>

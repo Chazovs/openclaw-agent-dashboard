@@ -10,6 +10,7 @@ services:
     volumes:
       - /home/openclaw/.openclaw:/home/openclaw/.openclaw:ro
       - ./data:/app/data
+      - .:/app:ro
     environment:
       - NODE_ENV=production
       - OPENCLAW_HOME=/home/openclaw/.openclaw
