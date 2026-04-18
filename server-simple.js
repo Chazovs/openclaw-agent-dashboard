@@ -49,9 +49,11 @@ let currentAgents = [
   }
 ];
 
-// Функция для добавления реального агента
-function addRealAgent(agentData) {
-  const newAgent = {
+// Функция для добавления или обновления реального агента
+function addOrUpdateAgent(agentData) {
+  const existingIndex = currentAgents.findIndex(a => a.id === agentData.id);
+  
+  const agent = {
     id: agentData.id || `agent_${Date.now()}`,
     name: agentData.name || 'Новый агент',
     emoji: agentData.emoji || '🤖',
@@ -62,8 +64,15 @@ function addRealAgent(agentData) {
     description: agentData.description || 'Агент OpenClaw'
   };
   
-  currentAgents.push(newAgent);
-  return newAgent;
+  if (existingIndex >= 0) {
+    // Обновляем существующего агента
+    currentAgents[existingIndex] = agent;
+  } else {
+    // Добавляем нового агента
+    currentAgents.push(agent);
+  }
+  
+  return agent;
 }
 
 // API: Получить всех агентов
@@ -84,18 +93,19 @@ app.get('/api/agents', (req, res) => {
   }
 });
 
-// API: Добавить агента
+// API: Добавить или обновить агента
 app.post('/api/agents', express.json(), (req, res) => {
   try {
-    const newAgent = addRealAgent(req.body);
-    console.log(`[INFO] Added new agent: ${newAgent.name}`);
+    const agent = addOrUpdateAgent(req.body);
+    const action = currentAgents.filter(a => a.id === agent.id).length > 1 ? 'Added' : 'Updated';
+    console.log(`[INFO] ${action} agent: ${agent.name}`);
     
     // Отправляем обновление всем клиентам
     io.emit('agents-update', currentAgents);
     
-    res.json({ success: true, agent: newAgent });
+    res.json({ success: true, agent: agent });
   } catch (err) {
-    console.error('Error adding agent:', err);
+    console.error('Error adding/updating agent:', err);
     res.status(500).json({ error: err.message });
   }
 });
