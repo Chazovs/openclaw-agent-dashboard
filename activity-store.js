@@ -1,12 +1,14 @@
-// Система хранения истории активности агентов
+// Система хранения истории активности агентов с РЕАЛЬНЫМИ данными из OpenClaw
 const fs = require('fs');
 const path = require('path');
+const RealOpenClawHistory = require('./real-history');
 
 class ActivityStore {
   constructor() {
     this.dataDir = path.join(__dirname, 'data');
     this.ensureDataDir();
     this.loadData();
+    this.realHistory = new RealOpenClawHistory();
   }
   
   ensureDataDir() {
@@ -40,7 +42,7 @@ class ActivityStore {
     }
   }
   
-  // Добавить активность для агента
+  // Добавить активность для агента (для демо-данных)
   addActivity(agentId, activity) {
     if (!this.activities[agentId]) {
       this.activities[agentId] = [];
@@ -48,17 +50,17 @@ class ActivityStore {
     
     const activityEntry = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toISOString(),
-      status: activity.status || 'unknown',
-      task: activity.task || 'Unknown task',
-      duration: activity.duration || 0,
+      agentId,
+      agentName: activity.agentName || 'Unknown',
+      action: activity.action || 'unknown',
       details: activity.details || {},
-      source: activity.source || 'system'
+      timestamp: activity.timestamp || new Date().toISOString(),
+      source: activity.source || 'dashboard'
     };
     
     this.activities[agentId].push(activityEntry);
     
-    // Храним только последние 100 записей на агента
+    // Ограничиваем историю для каждого агента (макс 100 записей)
     if (this.activities[agentId].length > 100) {
       this.activities[agentId] = this.activities[agentId].slice(-100);
     }
@@ -67,39 +69,146 @@ class ActivityStore {
     return activityEntry;
   }
   
-  // Получить историю активности агента
-  getAgentActivity(agentId, limit = 50) {
-    if (!this.activities[agentId]) {
-      return [];
+  // Получить активность агента (РЕАЛЬНЫЕ данные из OpenClaw)
+  getAgentActivity(agentId, limit = 20) {
+    try {
+      // Пытаемся получить РЕАЛЬНЫЕ данные для этого агента
+      const realActivities = this.realHistory.getRealActivityHistory(limit * 2);
+      
+      // Фильтруем по agentId
+      const agentRealActivities = realActivities.filter(activity => 
+        activity.agentId === agentId || 
+        activity.agentName.toLowerCase().includes(agentId.toLowerCase())
+      );
+      
+      if (agentRealActivities.length > 0) {
+        console.log(`Используем ${agentRealActivities.length} реальных записей для агента ${agentId}`);
+        return agentRealActivities.slice(0, limit);
+      }
+      
+      // Если реальных данных нет, используем демо
+      console.log(`Нет реальных данных для агента ${agentId}, используем демо`);
+      return this.activities[agentId] ? 
+        this.activities[agentId].slice(-limit).reverse() : 
+        [];
+        
+    } catch (error) {
+      console.error(`Ошибка получения реальной истории для агента ${agentId}:`, error);
+      return this.activities[agentId] ? 
+        this.activities[agentId].slice(-limit).reverse() : 
+        [];
     }
-    
-    // Сортируем по времени (новые сначала)
-    const activities = [...this.activities[agentId]]
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, limit);
-    
-    return activities;
   }
   
-  // Получить последнюю активность всех агентов
+  // Получить недавнюю активность (РЕАЛЬНЫЕ данные из OpenClaw)
   getRecentActivity(limit = 20) {
-    const allActivities = [];
-    
-    for (const agentId in this.activities) {
-      const agentActivities = this.activities[agentId];
-      if (agentActivities && agentActivities.length > 0) {
-        const latest = agentActivities[agentActivities.length - 1];
-        allActivities.push({
-          agentId,
-          ...latest
-        });
+    try {
+      // Пытаемся получить РЕАЛЬНЫЕ данные из OpenClaw
+      const realActivities = this.realHistory.getRealActivityHistory(limit);
+      
+      if (realActivities.length > 0) {
+        console.log(`Используем ${realActivities.length} реальных записей истории из OpenClaw`);
+        return realActivities;
       }
+      
+      // Если реальных данных нет, используем демо
+      console.log('Нет реальных данных, используем демо историю');
+      const allActivities = [];
+      
+      for (const agentId in this.activities) {
+        const agentActivities = this.activities[agentId];
+        if (agentActivities && agentActivities.length > 0) {
+          const latest = agentActivities[agentActivities.length - 1];
+          allActivities.push({
+            agentId,
+            ...latest
+          });
+        }
+      }
+      
+      // Сортируем по времени (новые сначала)
+      return allActivities
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, limit);
+        
+    } catch (error) {
+      console.error('Ошибка получения реальной истории:', error);
+      // Fallback на пустой массив
+      return [];
     }
-    
-    // Сортируем по времени (новые сначала)
-    return allActivities
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, limit);
+  }
+  
+  // Получить статистику активности (РЕАЛЬНЫЕ данные из OpenClaw)
+  getActivityStats() {
+    try {
+      // Пытаемся получить РЕАЛЬНУЮ статистику из OpenClaw
+      const realStats = this.realHistory.getRealActivityStats();
+      
+      if (realStats.success && realStats.stats.totalActivities > 0) {
+        console.log('Используем реальную статистику из OpenClaw');
+        return {
+          source: 'real_openclaw',
+          timestamp: realStats.timestamp,
+          ...realStats.stats
+        };
+      }
+      
+      // Если реальных данных нет, используем демо
+      console.log('Нет реальной статистики, используем демо');
+      const allActivities = [];
+      
+      for (const agentId in this.activities) {
+        const agentActivities = this.activities[agentId];
+        if (agentActivities && agentActivities.length > 0) {
+          agentActivities.forEach(activity => {
+            allActivities.push({
+              agentId,
+              ...activity
+            });
+          });
+        }
+      }
+      
+      const stats = {
+        source: 'demo',
+        totalActivities: allActivities.length,
+        byAgent: {},
+        byAction: {},
+        recent24h: 0
+      };
+      
+      allActivities.forEach(activity => {
+        stats.byAgent[activity.agentName] = (stats.byAgent[activity.agentName] || 0) + 1;
+        stats.byAction[activity.action] = (stats.byAction[activity.action] || 0) + 1;
+        
+        const ageMs = Date.now() - new Date(activity.timestamp).getTime();
+        if (ageMs < 24 * 60 * 60 * 1000) {
+          stats.recent24h++;
+        }
+      });
+      
+      stats.topAgents = Object.entries(stats.byAgent)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, count]) => ({ name, count }));
+      
+      stats.topActions = Object.entries(stats.byAction)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([action, count]) => ({ action, count }));
+      
+      return stats;
+      
+    } catch (error) {
+      console.error('Ошибка получения реальной статистики:', error);
+      return {
+        source: 'error',
+        totalActivities: 0,
+        byAgent: {},
+        byAction: {},
+        recent24h: 0
+      };
+    }
   }
   
   // Очистить историю агента
@@ -112,35 +221,11 @@ class ActivityStore {
     return false;
   }
   
-  // Получить статистику активности
-  getActivityStats() {
-    const stats = {
-      totalAgents: Object.keys(this.activities).length,
-      totalActivities: 0,
-      activitiesByStatus: {},
-      recentActivityCount: 0
-    };
-    
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
-    for (const agentId in this.activities) {
-      const agentActivities = this.activities[agentId];
-      stats.totalActivities += agentActivities.length;
-      
-      // Активности за последние 24 часа
-      const recent = agentActivities.filter(a => new Date(a.timestamp) > oneDayAgo);
-      stats.recentActivityCount += recent.length;
-      
-      // Статистика по статусам
-      agentActivities.forEach(activity => {
-        if (!stats.activitiesByStatus[activity.status]) {
-          stats.activitiesByStatus[activity.status] = 0;
-        }
-        stats.activitiesByStatus[activity.status]++;
-      });
-    }
-    
-    return stats;
+  // Очистить всю историю
+  clearAllActivity() {
+    this.activities = {};
+    this.saveData();
+    return true;
   }
 }
 
