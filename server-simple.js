@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
+const ActivityStore = require('./activity-store');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +15,9 @@ const io = socketIo(server, {
 
 app.use(cors());
 app.use(express.static('public'));
+
+// Инициализация хранилища активности
+const activityStore = new ActivityStore();
 
 // Начальный список агентов
 let currentAgents = [
@@ -110,7 +114,7 @@ app.post('/api/agents', express.json(), (req, res) => {
   }
 });
 
-// API: Получить активность агента
+// API: Получить активность агента (реальная система)
 app.get('/api/agents/:id/activity', (req, res) => {
   try {
     const agentId = req.params.id;
@@ -120,31 +124,109 @@ app.get('/api/agents/:id/activity', (req, res) => {
       return res.status(404).json({ error: 'Agent not found' });
     }
     
-    // Демо история активности
-    const demoActivity = [
-      {
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        status: 'working',
-        task: 'Анализ данных',
-        duration: 1200000
-      },
-      {
-        timestamp: new Date(Date.now() - 1800000).toISOString(),
-        status: 'idle',
-        task: 'Ожидание задач',
-        duration: 600000
-      },
-      {
-        timestamp: new Date(Date.now() - 600000).toISOString(),
-        status: 'working',
-        task: 'Разработка новой фичи',
-        duration: 300000
-      }
-    ];
+    // Получаем реальную историю активности
+    const activities = activityStore.getAgentActivity(agentId, 50);
     
-    res.json(demoActivity);
+    // Если истории нет, создаем начальные записи на основе статуса агента
+    if (activities.length === 0) {
+      const initialActivities = [
+        {
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
+          status: agent.status,
+          task: 'Инициализация агента в системе',
+          duration: 0,
+          source: 'system'
+        },
+        {
+          timestamp: new Date().toISOString(),
+          status: agent.status,
+          task: 'Агент активен в дашборде',
+          duration: 0,
+          source: 'dashboard'
+        }
+      ];
+      
+      initialActivities.forEach(activity => {
+        activityStore.addActivity(agentId, activity);
+      });
+      
+      // Получаем обновленную историю
+      const updatedActivities = activityStore.getAgentActivity(agentId, 50);
+      res.json(updatedActivities);
+    } else {
+      res.json(activities);
+    }
+    
   } catch (err) {
     console.error('Error in /api/agents/:id/activity:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Добавить активность для агента
+app.post('/api/agents/:id/activity', express.json(), (req, res) => {
+  try {
+    const agentId = req.params.id;
+    const agent = currentAgents.find(a => a.id === agentId);
+    
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+    
+    const { status, task, duration, details, source } = req.body;
+    
+    if (!task) {
+      return res.status(400).json({ error: 'Task is required' });
+    }
+    
+    const activity = {
+      status: status || agent.status,
+      task,
+      duration: duration || 0,
+      details: details || {},
+      source: source || 'api'
+    };
+    
+    const savedActivity = activityStore.addActivity(agentId, activity);
+    
+    // Обновляем статус агента если он изменился
+    if (status && status !== agent.status) {
+      agent.status = status;
+      agent.lastSeen = new Date().toISOString();
+      io.emit('agents-update', currentAgents);
+    }
+    
+    res.json({
+      success: true,
+      activity: savedActivity,
+      message: 'Activity recorded'
+    });
+    
+  } catch (err) {
+    console.error('Error adding activity:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Получить статистику активности
+app.get('/api/activity/stats', (req, res) => {
+  try {
+    const stats = activityStore.getActivityStats();
+    res.json(stats);
+  } catch (err) {
+    console.error('Error getting activity stats:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Получить последнюю активность всех агентов
+app.get('/api/activity/recent', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const recent = activityStore.getRecentActivity(limit);
+    res.json(recent);
+  } catch (err) {
+    console.error('Error getting recent activity:', err);
     res.status(500).json({ error: err.message });
   }
 });
