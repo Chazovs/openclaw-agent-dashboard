@@ -8,6 +8,8 @@ Simple pixel-art dashboard for monitoring OpenClaw AI agents in real-time.
 - 🔄 Real-time updates via WebSocket
 - 📊 Agent status monitoring (working/idle/error/offline)
 - 📈 System statistics
+- 🕰️ **NEW** Activity history timeline for each agent
+- 📊 **NEW** Task tracking and duration monitoring
 - 🐳 Docker container support
 - 🔌 Automatic agent discovery
 
@@ -49,8 +51,17 @@ npm run dev
 ## API Endpoints
 
 - `GET /api/agents` - JSON list of all agents
+- `GET /api/agents/:id/activity` - Activity history for specific agent
+- `PUT /api/agents/:id/status` - Update agent status (now supports task tracking)
 - `GET /` - Dashboard interface
 - `WebSocket /` - Real-time agent updates
+
+### New Activity History Features
+
+- View agent activity timeline
+- Track tasks and durations
+- Filter by status and time range
+- Real-time updates via WebSocket
 
 ## Environment Variables
 

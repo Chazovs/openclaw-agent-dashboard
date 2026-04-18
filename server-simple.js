@@ -29,6 +29,30 @@ let currentAgents = [
   }
 ];
 
+// История активности агентов
+let agentActivityHistory = {
+  'main_claude': [
+    {
+      timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 час назад
+      status: 'working',
+      task: 'Анализ дашборда',
+      duration: 1200000 // 20 минут
+    },
+    {
+      timestamp: new Date(Date.now() - 1800000).toISOString(), // 30 минут назад
+      status: 'idle',
+      task: 'Ожидание задач',
+      duration: 600000 // 10 минут
+    },
+    {
+      timestamp: new Date(Date.now() - 600000).toISOString(), // 10 минут назад
+      status: 'working',
+      task: 'Разработка новой фичи',
+      duration: 300000 // 5 минут
+    }
+  ]
+};
+
 // Функция для добавления реального агента
 function addRealAgent(agentData) {
   const newAgent = {
@@ -43,6 +67,17 @@ function addRealAgent(agentData) {
   };
   
   currentAgents.push(newAgent);
+  
+  // Инициализируем историю активности для нового агента
+  if (!agentActivityHistory[newAgent.id]) {
+    agentActivityHistory[newAgent.id] = [{
+      timestamp: new Date().toISOString(),
+      status: newAgent.status,
+      task: 'Агент создан',
+      duration: 0
+    }];
+  }
+  
   return newAgent;
 }
 
@@ -52,13 +87,53 @@ function removeAgent(agentId) {
 }
 
 // Функция для обновления статуса агента
-function updateAgentStatus(agentId, newStatus) {
+function updateAgentStatus(agentId, newStatus, task = null) {
   const agent = currentAgents.find(a => a.id === agentId);
   if (agent) {
+    // Добавляем запись в историю
+    addActivityRecord(agentId, {
+      timestamp: new Date().toISOString(),
+      status: newStatus,
+      task: task || `Изменение статуса на ${newStatus}`,
+      duration: 0 // Будет обновлено при следующем изменении статуса
+    });
+    
     agent.status = newStatus;
     agent.sprite = getSpriteForStatus(newStatus);
     agent.lastSeen = new Date().toISOString();
   }
+}
+
+// Функция для добавления записи активности
+function addActivityRecord(agentId, activity) {
+  if (!agentActivityHistory[agentId]) {
+    agentActivityHistory[agentId] = [];
+  }
+  
+  // Обновляем продолжительность предыдущей записи
+  const history = agentActivityHistory[agentId];
+  if (history.length > 0) {
+    const lastActivity = history[history.length - 1];
+    const lastTimestamp = new Date(lastActivity.timestamp);
+    const currentTimestamp = new Date(activity.timestamp);
+    lastActivity.duration = currentTimestamp - lastTimestamp;
+  }
+  
+  // Добавляем новую запись
+  history.push(activity);
+  
+  // Ограничиваем историю последними 50 записями
+  if (history.length > 50) {
+    agentActivityHistory[agentId] = history.slice(-50);
+  }
+}
+
+// Функция для получения истории активности агента
+function getAgentActivityHistory(agentId, limit = 20) {
+  if (!agentActivityHistory[agentId]) {
+    return [];
+  }
+  return agentActivityHistory[agentId].slice(-limit);
 }
 
 // Получение спрайта по статусу
@@ -139,19 +214,38 @@ app.delete('/api/agents/:id', (req, res) => {
 app.put('/api/agents/:id/status', express.json(), (req, res) => {
   try {
     const agentId = req.params.id;
-    const { status } = req.body;
+    const { status, task } = req.body;
     
     if (!status) {
       return res.status(400).json({ error: 'Status is required' });
     }
     
-    updateAgentStatus(agentId, status);
+    updateAgentStatus(agentId, status, task);
     
     // Уведомляем всех клиентов через WebSocket
     io.emit('agent-status-updated', { agentId, status });
     io.emit('agents-update', currentAgents);
     
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API для получения истории активности агента
+app.get('/api/agents/:id/activity', (req, res) => {
+  try {
+    const agentId = req.params.id;
+    const limit = parseInt(req.query.limit) || 20;
+    
+    const activity = getAgentActivityHistory(agentId, limit);
+    
+    res.json({
+      success: true,
+      agentId,
+      activity,
+      total: activity.length
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -172,11 +266,26 @@ io.on('connection', (socket) => {
   // Периодические обновления (только если есть агенты)
   const interval = setInterval(() => {
     if (currentAgents.length > 0) {
-      const updatedAgents = currentAgents.map(agent => ({
-        ...agent,
-        status: getRandomStatus(agent.status),
-        lastSeen: new Date().toISOString()
-      }));
+      const updatedAgents = currentAgents.map(agent => {
+        const newStatus = getRandomStatus(agent.status);
+        
+        // Добавляем запись в историю при изменении статуса
+        if (newStatus !== agent.status) {
+          const task = getRandomTask(newStatus);
+          addActivityRecord(agent.id, {
+            timestamp: new Date().toISOString(),
+            status: newStatus,
+            task: task,
+            duration: 0
+          });
+        }
+        
+        return {
+          ...agent,
+          status: newStatus,
+          lastSeen: new Date().toISOString()
+        };
+      });
       
       // Обновляем текущий список
       currentAgents = updatedAgents;
@@ -199,10 +308,16 @@ io.on('connection', (socket) => {
     io.emit('agents-update', currentAgents);
   });
   
-  socket.on('update-agent-status', ({ agentId, status }) => {
-    updateAgentStatus(agentId, status);
+  socket.on('update-agent-status', ({ agentId, status, task }) => {
+    updateAgentStatus(agentId, status, task);
     io.emit('agent-status-updated', { agentId, status });
     io.emit('agents-update', currentAgents);
+  });
+  
+  // Запрос истории активности
+  socket.on('get-agent-activity', (agentId) => {
+    const activity = getAgentActivityHistory(agentId);
+    socket.emit('agent-activity', { agentId, activity });
   });
   
   socket.on('disconnect', () => {
@@ -219,8 +334,37 @@ function getRandomStatus(currentStatus) {
   return statuses[Math.floor(Math.random() * statuses.length)];
 }
 
+// Случайная задача для демо
+function getRandomTask(status) {
+  const tasks = {
+    'working': [
+      'Анализ данных',
+      'Обработка запросов',
+      'Обучение модели',
+      'Генерация контента',
+      'Оптимизация кода',
+      'Тестирование системы'
+    ],
+    'idle': [
+      'Ожидание задач',
+      'Пауза',
+      'Перезагрузка',
+      'Обновление конфигурации'
+    ],
+    'error': [
+      'Ошибка выполнения',
+      'Сбой соединения',
+      'Проблема с памятью',
+      'Исключение в коде'
+    ]
+  };
+  
+  const statusTasks = tasks[status] || ['Неизвестная задача'];
+  return statusTasks[Math.floor(Math.random() * statusTasks.length)];
+}
+
 // Запуск сервера
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Agent Dashboard running on http://localhost:${PORT}`);
   console.log('WebSocket server ready with demo data');

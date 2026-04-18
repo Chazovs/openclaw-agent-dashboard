@@ -45,207 +45,6 @@
             font-size: 1.2rem;
         }
         
-        /* Стили для панели фильтрации */
-        .filter-panel {
-            background: #16213e;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 30px;
-            border: 2px solid #0f3460;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            align-items: end;
-        }
-        
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .filter-label {
-            color: #a9a9a9;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-        }
-        
-        .filter-input {
-            background: #1a1a2e;
-            border: 1px solid #0f3460;
-            color: #e6e6e6;
-            padding: 10px 15px;
-            border-radius: 5px;
-            font-family: 'Courier New', monospace;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-        
-        .filter-input:focus {
-            outline: none;
-            border-color: #4cc9f0;
-            box-shadow: 0 0 10px rgba(76, 201, 240, 0.3);
-        }
-        
-        .filter-select {
-            background: #1a1a2e;
-            border: 1px solid #0f3460;
-            color: #e6e6e6;
-            padding: 10px 15px;
-            border-radius: 5px;
-            font-family: 'Courier New', monospace;
-            font-size: 1rem;
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%234cc9f0' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 15px center;
-            background-size: 12px;
-            padding-right: 40px;
-        }
-        
-        .filter-select:focus {
-            outline: none;
-            border-color: #4cc9f0;
-            box-shadow: 0 0 10px rgba(76, 201, 240, 0.3);
-        }
-        
-        .filter-button {
-            background: rgba(76, 201, 240, 0.1);
-            color: #4cc9f0;
-            border: 1px solid #4cc9f0;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            font-size: 1rem;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .filter-button:hover {
-            background: rgba(76, 201, 240, 0.3);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 201, 240, 0.2);
-        }
-        
-        .filter-button.reset {
-            background: rgba(247, 37, 133, 0.1);
-            border-color: #f72585;
-            color: #f72585;
-        }
-        
-        .filter-button.reset:hover {
-            background: rgba(247, 37, 133, 0.3);
-            box-shadow: 0 5px 15px rgba(247, 37, 133, 0.2);
-        }
-        
-        .filter-stats {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #0f3460;
-            color: #a9a9a9;
-            font-size: 0.9rem;
-        }
-        
-        /* Стили для расширенной статистики */
-        .advanced-stats {
-            background: #16213e;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 30px;
-            border: 2px solid #0f3460;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        
-        .stat-chart {
-            background: #1a1a2e;
-            border-radius: 8px;
-            padding: 15px;
-            border: 1px solid #0f3460;
-        }
-        
-        .chart-title {
-            color: #4cc9f0;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-            text-align: center;
-        }
-        
-        .chart-container {
-            height: 200px;
-            position: relative;
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-around;
-            padding: 10px;
-        }
-        
-        .chart-bar {
-            width: 40px;
-            background: linear-gradient(to top, #4cc9f0, #7209b7);
-            border-radius: 4px 4px 0 0;
-            position: relative;
-            transition: height 0.5s ease;
-        }
-        
-        .chart-bar-label {
-            position: absolute;
-            bottom: -25px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            color: #a9a9a9;
-            font-size: 0.8rem;
-        }
-        
-        .chart-bar-value {
-            position: absolute;
-            top: -25px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            color: #4cc9f0;
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-        
-        .workspace-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .workspace-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            margin-bottom: 5px;
-            background: #1a1a2e;
-            border-radius: 5px;
-            border-left: 4px solid #4cc9f0;
-        }
-        
-        .workspace-name {
-            color: #e6e6e6;
-        }
-        
-        .workspace-count {
-            color: #4cc9f0;
-            font-weight: bold;
-            background: rgba(76, 201, 240, 0.1);
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.9rem;
-        }
-        
         .dashboard {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -340,7 +139,7 @@
             border-radius: 10px;
             padding: 20px;
             margin-top: 30px;
-            margin-bottom: 40px;
+            margin-bottom: 40px; /* Добавляем отступ снизу */
             text-align: center;
         }
         
@@ -403,33 +202,8 @@
             color: #F44336;
         }
         
-        .no-results {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 40px;
-            color: #a9a9a9;
-            font-size: 1.2rem;
-            background: #16213e;
-            border-radius: 10px;
-            border: 2px solid #0f3460;
-        }
-        
-        .no-results .emoji {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            display: block;
-        }
-        
         @media (max-width: 768px) {
             .dashboard {
-                grid-template-columns: 1fr;
-            }
-            
-            .filter-panel {
-                grid-template-columns: 1fr;
-            }
-            
-            .advanced-stats {
                 grid-template-columns: 1fr;
             }
             
@@ -445,7 +219,7 @@
             background: #16213e;
             border-radius: 10px;
             border: 2px solid #0f3460;
-            display: none;
+            display: none; /* Скрыто по умолчанию */
         }
         
         .timeline-header {
@@ -624,71 +398,8 @@
             🔌 Connecting...
         </div>
         
-        <!-- Панель фильтрации и поиска -->
-        <div class="filter-panel pixel-border">
-            <div class="filter-group">
-                <label class="filter-label">🔍 Поиск агентов</label>
-                <input type="text" id="searchInput" class="filter-input" placeholder="Поиск по имени или ID...">
-            </div>
-            
-            <div class="filter-group">
-                <label class="filter-label">📊 Статус</label>
-                <select id="statusFilter" class="filter-select">
-                    <option value="all">Все статусы</option>
-                    <option value="working">Работающие</option>
-                    <option value="idle">Бездействующие</option>
-                    <option value="error">Ошибки</option>
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label class="filter-label">📁 Workspace</label>
-                <select id="workspaceFilter" class="filter-select">
-                    <option value="all">Все workspace</option>
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label class="filter-label">📅 Сортировка</label>
-                <select id="sortFilter" class="filter-select">
-                    <option value="name">По имени (A-Z)</option>
-                    <option value="name-desc">По имени (Z-A)</option>
-                    <option value="lastSeen">По активности (новые)</option>
-                    <option value="lastSeen-desc">По активности (старые)</option>
-                    <option value="status">По статусу</option>
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <button class="filter-button" id="applyFilters">Применить фильтры</button>
-                <button class="filter-button reset" id="resetFilters">Сбросить</button>
-            </div>
-            
-            <div class="filter-stats" id="filterStats">
-                <span>Найдено: <span id="filterCount">0</span> агентов</span>
-                <span>Фильтры: <span id="activeFilters">нет</span></span>
-            </div>
-        </div>
-        
-        <!-- Расширенная статистика -->
-        <div class="advanced-stats pixel-border">
-            <div class="stat-chart">
-                <h3 class="chart-title">📈 Распределение по статусам</h3>
-                <div class="chart-container" id="statusChart">
-                    <!-- Chart will be generated by JavaScript -->
-                </div>
-            </div>
-            
-            <div class="stat-chart">
-                <h3 class="chart-title">📂 Агенты по workspace</h3>
-                <ul class="workspace-list" id="workspaceList">
-                    <!-- Workspace list will be populated by JavaScript -->
-                </ul>
-            </div>
-        </div>
-        
         <div class="stats-bar">
-            <h2>📊 ОСНОВНАЯ СТАТИСТИКА</h2>
+            <h2>📊 SYSTEM STATS</h2>
             <div class="stats-grid" id="statsGrid">
                 <!-- Stats will be populated by JavaScript -->
             </div>
@@ -700,19 +411,19 @@
                 <div class="agent-header">
                     <div class="pixel-avatar">🤖</div>
                     <div class="agent-info">
-                        <h3>Загрузка агентов...</h3>
-                        <div class="agent-id">Ожидание подключения</div>
+                        <h3>Loading agents...</h3>
+                        <div class="agent-id">Waiting for connection</div>
                     </div>
                 </div>
                 <div class="status-text">
                     <span class="status-indicator status-idle"></span>
-                    <span>ПОДКЛЮЧЕНИЕ К СЕРВЕРУ</span>
+                    <span>CONNECTING TO SERVER</span>
                 </div>
             </div>
         </div>
         
         <div class="last-update" id="lastUpdate">
-            Последнее обновление: Никогда
+            Last update: Never
         </div>
         
         <!-- Контейнер для временной шкалы активности -->
@@ -735,25 +446,6 @@
         const agentsGrid = document.getElementById('agentsGrid');
         const statsGrid = document.getElementById('statsGrid');
         const lastUpdate = document.getElementById('lastUpdate');
-        const searchInput = document.getElementById('searchInput');
-        const statusFilter = document.getElementById('statusFilter');
-        const workspaceFilter = document.getElementById('workspaceFilter');
-        const sortFilter = document.getElementById('sortFilter');
-        const applyFiltersBtn = document.getElementById('applyFilters');
-        const resetFiltersBtn = document.getElementById('resetFilters');
-        const filterCount = document.getElementById('filterCount');
-        const activeFilters = document.getElementById('activeFilters');
-        const statusChart = document.getElementById('statusChart');
-        const workspaceList = document.getElementById('workspaceList');
-        
-        let allAgents = [];
-        let filteredAgents = [];
-        let currentFilters = {
-            search: '',
-            status: 'all',
-            workspace: 'all',
-            sort: 'name'
-        };
         
         // Connection status
         socket.on('connect', () => {
@@ -771,9 +463,7 @@
         // Handle agents update
         socket.on('agents-update', (agents) => {
             console.log('Received agents update:', agents);
-            allAgents = agents;
-            updateWorkspaceFilter(agents);
-            applyFilters();
+            updateDashboard(agents);
             updateLastUpdate();
         });
         
@@ -781,169 +471,39 @@
         fetch('/api/agents')
             .then(response => response.json())
             .then(agents => {
-                allAgents = agents;
-                updateWorkspaceFilter(agents);
-                applyFilters();
+                updateDashboard(agents);
                 updateLastUpdate();
             })
             .catch(error => {
                 console.error('Error fetching agents:', error);
             });
         
-        // Update workspace filter options
-        function updateWorkspaceFilter(agents) {
-            const workspaces = [...new Set(agents.map(agent => agent.workspace))].sort();
-            const workspaceFilter = document.getElementById('workspaceFilter');
-            
-            // Keep the first option ("Все workspace")
-            workspaceFilter.innerHTML = '<option value="all">Все workspace</option>';
-            
-            // Add workspace options
-            workspaces.forEach(workspace => {
-                const option = document.createElement('option');
-                option.value = workspace;
-                option.textContent = workspace;
-                workspaceFilter.appendChild(option);
-            });
-        }
-        
-        // Apply filters
-        function applyFilters() {
-            // Get current filter values
-            currentFilters.search = searchInput.value.toLowerCase();
-            currentFilters.status = statusFilter.value;
-            currentFilters.workspace = workspaceFilter.value;
-            currentFilters.sort = sortFilter.value;
-            
-            // Apply filters
-            filteredAgents = allAgents.filter(agent => {
-                // Search filter
-                if (currentFilters.search && 
-                    !agent.name.toLowerCase().includes(currentFilters.search) && 
-                    !agent.id.toLowerCase().includes(currentFilters.search)) {
-                    return false;
-                }
-                
-                // Status filter
-                if (currentFilters.status !== 'all' && agent.status !== currentFilters.status) {
-                    return false;
-                }
-                
-                // Workspace filter
-                if (currentFilters.workspace !== 'all' && agent.workspace !== currentFilters.workspace) {
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            // Apply sorting
-            filteredAgents.sort((a, b) => {
-                switch (currentFilters.sort) {
-                    case 'name':
-                        return a.name.localeCompare(b.name);
-                    case 'name-desc':
-                        return b.name.localeCompare(a.name);
-                    case 'lastSeen':
-                        return new Date(b.lastSeen) - new Date(a.lastSeen);
-                    case 'lastSeen-desc':
-                        return new Date(a.lastSeen) - new Date(b.lastSeen);
-                    case 'status':
-                        return a.status.localeCompare(b.status);
-                    default:
-                        return 0;
-                }
-            });
-            
-            // Update UI
-            updateDashboard(filteredAgents);
-            updateFilterStats();
-            updateAdvancedStats(filteredAgents);
-        }
-        
-        // Update filter statistics
-        function updateFilterStats() {
-            filterCount.textContent = filteredAgents.length;
-            
-            const activeFiltersList = [];
-            if (currentFilters.search) activeFiltersList.push('поиск');
-            if (currentFilters.status !== 'all') activeFiltersList.push('статус');
-            if (currentFilters.workspace !== 'all') activeFiltersList.push('workspace');
-            if (currentFilters.sort !== 'name') activeFiltersList.push('сортировка');
-            
-            activeFilters.textContent = activeFiltersList.length > 0 ? activeFiltersList.join(', ') : 'нет';
-        }
-        
-        // Update advanced statistics
-        function updateAdvancedStats(agents) {
-            // Update status chart
-            const statusCounts = {
-                working: agents.filter(a => a.status === 'working').length,
-                idle: agents.filter(a => a.status === 'idle').length,
-                error: agents.filter(a => a.status === 'error').length
-            };
-            
-            const maxCount = Math.max(statusCounts.working, statusCounts.idle, statusCounts.error, 1);
-            
-            statusChart.innerHTML = '';
-            
-            ['working', 'idle', 'error'].forEach(status => {
-                const count = statusCounts[status];
-                const height = (count / maxCount) * 150; // Max height 150px
-                
-                const bar = document.createElement('div');
-                bar.className = 'chart-bar';
-                bar.style.height = `${height}px`;
-                
-                const value = document.createElement('div');
-                value.className = 'chart-bar-value';
-                value.textContent = count;
-                
-                const label = document.createElement('div');
-                label.className = 'chart-bar-label';
-                label.textContent = status === 'working' ? 'Работают' : 
-                                   status === 'idle' ? 'Бездействуют' : 'Ошибки';
-                
-                bar.appendChild(value);
-                bar.appendChild(label);
-                statusChart.appendChild(bar);
-            });
-            
-            // Update workspace list
-            const workspaceCounts = {};
-            agents.forEach(agent => {
-                workspaceCounts[agent.workspace] = (workspaceCounts[agent.workspace] || 0) + 1;
-            });
-            
-            // Sort workspaces by count (descending)
-            const sortedWorkspaces = Object.entries(workspaceCounts)
-                .sort((a, b) => b[1] - a[1]);
-            
-            workspaceList.innerHTML = '';
-            
-            if (sortedWorkspaces.length === 0) {
-                workspaceList.innerHTML = '<li class="workspace-item"><span class="workspace-name">Нет данных</span></li>';
-            } else {
-                sortedWorkspaces.forEach(([workspace, count]) => {
-                    const li = document.createElement('li');
-                    li.className = 'workspace-item';
-                    li.innerHTML = `
-                        <span class="workspace-name">${workspace}</span>
-                        <span class="workspace-count">${count}</span>
-                    `;
-                    workspaceList.appendChild(li);
-                });
-            }
-        }
-        
         function updateDashboard(agents) {
             // Update agents grid
             if (agents.length === 0) {
                 agentsGrid.innerHTML = `
-                    <div class="no-results">
-                        <span class="emoji">🔍</span>
-                        <h3>Агенты не найдены</h3>
-                        <p>Попробуйте изменить параметры фильтрации</p>
+                    <div class="agent-card pixel-border">
+                        <div class="agent-header">
+                            <div class="pixel-avatar">👻</div>
+                            <div class="agent-info">
+                                <h3>Агентов нет</h3>
+                                <div class="agent-id">Создайте первого агента!</div>
+                            </div>
+                        </div>
+                        <div class="status-text">
+                            <span class="status-indicator status-offline"></span>
+                            <span>ОЖИДАНИЕ АГЕНТОВ</span>
+                        </div>
+                        <div class="agent-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Статус:</span>
+                                <span class="detail-value">Дашборд готов</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Инструкция:</span>
+                                <span class="detail-value">Создайте агентов через OpenClaw</span>
+                            </div>
+                        </div>
                     </div>
                 `;
                 
@@ -1008,57 +568,34 @@
             statsGrid.innerHTML = `
                 <div class="stat-item">
                     <div class="stat-value">${agents.length}</div>
-                    <div class="stat-label">Всего агентов</div>
+                    <div class="stat-label">Total Agents</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${workingCount}</div>
-                    <div class="stat-label">Работающих</div>
+                    <div class="stat-label">Working</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${idleCount}</div>
-                    <div class="stat-label">Бездействующих</div>
+                    <div class="stat-label">Idle</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value">${errorCount}</div>
-                    <div class="stat-label">Ошибок</div>
+                    <div class="stat-label">Errors</div>
                 </div>
             `;
         }
         
         function updateLastUpdate() {
             const now = new Date();
-            lastUpdate.textContent = `Последнее обновление: ${now.toLocaleTimeString()}`;
+            lastUpdate.textContent = `Last update: ${now.toLocaleTimeString()}`;
         }
-        
-        // Event listeners
-        applyFiltersBtn.addEventListener('click', applyFilters);
-        resetFiltersBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            statusFilter.value = 'all';
-            workspaceFilter.value = 'all';
-            sortFilter.value = 'name';
-            applyFilters();
-        });
-        
-        // Auto-apply filters on search input (with debounce)
-        let searchTimeout;
-        searchInput.addEventListener('input', () => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(applyFilters, 300);
-        });
-        
-        // Auto-apply filters on select changes
-        statusFilter.addEventListener('change', applyFilters);
-        workspaceFilter.addEventListener('change', applyFilters);
-        sortFilter.addEventListener('change', applyFilters);
         
         // Auto-refresh every 30 seconds as backup
         setInterval(() => {
             fetch('/api/agents')
                 .then(response => response.json())
                 .then(agents => {
-                    allAgents = agents;
-                    applyFilters();
+                    updateDashboard(agents);
                     updateLastUpdate();
                 });
         }, 30000);
@@ -1130,7 +667,6 @@
             const minutes = Math.floor(seconds / 60);
             if (minutes < 60) return `${minutes}мин`;
             
-            const
             const hours = Math.floor(minutes / 60);
             const remainingMinutes = minutes % 60;
             return `${hours}ч ${remainingMinutes}мин`;
