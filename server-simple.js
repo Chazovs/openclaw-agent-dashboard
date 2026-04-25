@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const ActivityStore = require('./activity-store');
+const AnalyticsEngine = require('./analytics-engine');
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -21,6 +22,9 @@ app.use(express.static('public'));
 
 // Инициализация хранилища активности
 const activityStore = new ActivityStore();
+
+// Инициализация движка аналитики
+const analyticsEngine = new AnalyticsEngine();
 
 // Функция для получения реальных агентов из OpenClaw
 function getRealAgentsFromOpenClaw() {
@@ -385,6 +389,413 @@ app.get('/api/activity/recent', (req, res) => {
     res.json(recent);
   } catch (err) {
     console.error('Error getting recent activity:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Аналитика производительности агентов
+app.get('/api/analytics/performance', (req, res) => {
+  try {
+    console.log('[INFO] /api/analytics/performance called');
+    
+    // Получаем текущих агентов
+    const agents = currentAgents;
+    
+    // Анализируем агентов
+    const analytics = analyticsEngine.analyzeAgents(agents);
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      analytics
+    });
+  } catch (err) {
+    console.error('Error in /api/analytics/performance:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Исторические данные для графиков
+app.get('/api/analytics/history', (req, res) => {
+  try {
+    const hours = parseInt(req.query.hours) || 24;
+    console.log(`[INFO] /api/analytics/history called for ${hours} hours`);
+    
+    const historicalData = analyticsEngine.getHistoricalData(hours);
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      hours,
+      ...historicalData
+    });
+  } catch (err) {
+    console.error('Error in /api/analytics/history:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Статистика по workspace
+app.get('/api/analytics/workspaces', (req, res) => {
+  try {
+    console.log('[INFO] /api/analytics/workspaces called');
+    
+    const workspaceStats = analyticsEngine.getWorkspaceStats();
+    const performanceSummary = analyticsEngine.getPerformanceSummary();
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      workspaceStats,
+      performanceSummary
+    });
+  } catch (err) {
+    console.error('Error in /api/analytics/workspaces:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Сводка производительности
+app.get('/api/analytics/summary', (req, res) => {
+  try {
+    console.log('[INFO] /api/analytics/summary called');
+    
+    const summary = analyticsEngine.getPerformanceSummary();
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      summary
+    });
+  } catch (err) {
+    console.error('Error in /api/analytics/summary:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Цены моделей OpenAI/DeepSeek за 1K токенов (в USD)
+const MODEL_PRICING = {
+  'deepseek-chat': { input: 0.00027, output: 0.0011 },
+  'deepseek-reasoner': { input: 0.00055, output: 0.00219 },
+  'gpt-4o': { input: 0.0025, output: 0.01 },
+  'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
+  'claude-3-opus': { input: 0.015, output: 0.075 },
+  'claude-3-sonnet': { input: 0.003, output: 0.015 },
+  'claude-3-haiku': { input: 0.00025, output: 0.00125 },
+  'unknown': { input: 0.00027, output: 0.0011 } // fallback = deepseek-chat
+};
+
+// API: Получить метрики использования токенов и оценку стоимости
+app.get('/api/tokens/costs', (req, res) => {
+  try {
+    console.log('[INFO] /api/tokens/costs called');
+    const agents = currentAgents.filter(a => a.realMetrics && a.realMetrics.totalTokens > 0);
+    
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalTokens = 0;
+    let totalCost = 0;
+    const byAgent = [];
+    const byWorkspace = {};
+    const byModel = {};
+    
+    agents.forEach(agent => {
+      const m = agent.realMetrics || {};
+      const model = (m.model || 'unknown').toLowerCase();
+      const pricing = MODEL_PRICING[model] || MODEL_PRICING['unknown'];
+      const inTokens = m.inputTokens || 0;
+      const outTokens = m.outputTokens || 0;
+      const tokTotal = m.totalTokens || (inTokens + outTokens);
+      
+      // Стоимость: input и output считаются отдельно
+      const cost = (inTokens / 1000) * pricing.input + (outTokens / 1000) * pricing.output;
+      
+      totalInputTokens += inTokens;
+      totalOutputTokens += outTokens;
+      totalTokens += tokTotal;
+      totalCost += cost;
+      
+      // Per-agent
+      byAgent.push({
+        id: agent.id,
+        name: agent.name,
+        emoji: agent.emoji,
+        workspace: agent.workspace,
+        status: agent.status,
+        inputTokens: inTokens,
+        outputTokens: outTokens,
+        totalTokens: tokTotal,
+        cost: parseFloat(cost.toFixed(6)),
+        model: model,
+        costPerModel: pricing
+      });
+      
+      // Per workspace
+      const ws = agent.workspace || 'unknown';
+      if (!byWorkspace[ws]) {
+        byWorkspace[ws] = { inputTokens: 0, outputTokens: 0, totalTokens: 0, cost: 0, agentCount: 0 };
+      }
+      byWorkspace[ws].inputTokens += inTokens;
+      byWorkspace[ws].outputTokens += outTokens;
+      byWorkspace[ws].totalTokens += tokTotal;
+      byWorkspace[ws].cost += cost;
+      byWorkspace[ws].agentCount++;
+      
+      // Per model
+      if (!byModel[model]) {
+        byModel[model] = { inputTokens: 0, outputTokens: 0, totalTokens: 0, cost: 0, agentCount: 0 };
+      }
+      byModel[model].inputTokens += inTokens;
+      byModel[model].outputTokens += outTokens;
+      byModel[model].totalTokens += tokTotal;
+      byModel[model].cost += cost;
+      byModel[model].agentCount++;
+    });
+    
+    // Sort by cost descending
+    byAgent.sort((a, b) => b.cost - a.cost);
+    
+    // Round workspace costs
+    for (const ws of Object.keys(byWorkspace)) {
+      byWorkspace[ws].cost = parseFloat(byWorkspace[ws].cost.toFixed(6));
+    }
+    for (const mdl of Object.keys(byModel)) {
+      byModel[mdl].cost = parseFloat(byModel[mdl].cost.toFixed(6));
+    }
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      summary: {
+        totalAgents: agents.length,
+        totalInputTokens,
+        totalOutputTokens,
+        totalTokens,
+        totalCost: parseFloat(totalCost.toFixed(6)),
+        avgCostPerAgent: agents.length > 0 ? parseFloat((totalCost / agents.length).toFixed(6)) : 0,
+        topModel: Object.entries(byModel).sort((a, b) => b[1].totalTokens - a[1].totalTokens)[0]?.[0] || 'unknown'
+      },
+      byAgent,
+      byWorkspace,
+      byModel
+    });
+  } catch (err) {
+    console.error('Error in /api/tokens/costs:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Тренды токенов (снапшоты с временными метками)
+app.get('/api/tokens/trends', (req, res) => {
+  try {
+    console.log('[INFO] /api/tokens/trends called');
+    const hours = parseInt(req.query.hours) || 24;
+    
+    // Получаем исторические снапшоты из analytics engine
+    const history = analyticsEngine.getHistoricalData(hours);
+    const rawSnapshots = history.raw || [];
+    
+    // Превращаем снапшоты в временной ряд
+    const trends = rawSnapshots.map(snap => ({
+      timestamp: snap.timestamp,
+      totalTokens: snap.tokenUsage?.total || 0,
+      totalAgents: snap.totalAgents || 0,
+      byStatus: snap.byStatus || {},
+      // Стоимость оцениваем из снапшота (fallback для старых снапшотов)
+      estimatedCost: snap.tokenUsage?.total 
+        ? parseFloat(((snap.tokenUsage.total / 1000) * 0.0005).toFixed(6)) 
+        : 0
+    }));
+    
+    // Сортируем по времени
+    trends.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      hours,
+      dataPoints: trends.length,
+      trends
+    });
+  } catch (err) {
+    console.error('Error in /api/tokens/trends:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Получить системную статистику здоровья
+app.get('/api/system/health', (req, res) => {
+  try {
+    const os = require('os');
+    // os-utils not available, using OS built-ins
+    
+    // CPU info
+    const cpus = os.cpus();
+    const cpuCores = cpus.length;
+    
+    // Memory info
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const memPercent = Math.round((usedMem / totalMem) * 100);
+    
+    // Load average
+    const loadAvg = os.loadavg();
+    
+    // Uptime
+    const uptime = os.uptime();
+    
+    // Disk info (try reading /proc/mounts or using df)
+    let diskInfo = { total: 0, used: 0, free: 0, usagePercent: 0 };
+    try {
+      const dfOutput = require('child_process').execSync('df -B1 / | tail -1').toString().trim().split(/\s+/);
+      if (dfOutput.length >= 4) {
+        diskInfo.total = parseInt(dfOutput[1]) || 0;
+        diskInfo.used = parseInt(dfOutput[2]) || 0;
+        diskInfo.free = parseInt(dfOutput[3]) || 0;
+        diskInfo.usagePercent = Math.round((diskInfo.used / (diskInfo.total || 1)) * 100);
+      }
+    } catch (e) { /* df failed, use statvfs or zero */ }
+    
+    // Get disk usage for specific paths
+    let diskPaths = [];
+    try {
+      const dfAll = require('child_process').execSync('df -B1 --type=ext4 --type=ext3 --type=ext2 --type=xfs --type=btrfs 2>/dev/null | tail -n +2').toString().trim();
+      if (dfAll) {
+        dfAll.split('\n').forEach(line => {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 6) {
+            diskPaths.push({
+              filesystem: parts[0],
+              total: parseInt(parts[1]) || 0,
+              used: parseInt(parts[2]) || 0,
+              free: parseInt(parts[3]) || 0,
+              usagePercent: parseInt(parts[4]) || 0,
+              mount: parts[5]
+            });
+          }
+        });
+      }
+    } catch (e) { /* silent */ }
+    
+    // Running processes
+    let processCount = 0;
+    try {
+      const psOutput = require('child_process').execSync('ps aux | wc -l').toString().trim();
+      processCount = parseInt(psOutput) - 1 || 0;
+    } catch (e) { /* silent */ }
+    
+    // Network connections
+    let netConnections = { total: 0, listen: 0, established: 0, timeWait: 0 };
+    try {
+      const ssOutput = require('child_process').execSync('ss -tlnp 2>/dev/null | tail -n +2 | wc -l').toString().trim();
+      netConnections.listen = parseInt(ssOutput) || 0;
+      
+      const estOutput = require('child_process').execSync('ss -tnp 2>/dev/null | tail -n +2 | wc -l').toString().trim();
+      netConnections.established = parseInt(estOutput) || 0;
+      
+      netConnections.total = netConnections.listen + netConnections.established;
+    } catch (e) { /* silent */ }
+    
+    // Calculate health score (0-100)
+    const cpuLoadPercent = loadAvg[0] / cpuCores;
+    const healthScore = Math.max(0, Math.min(100, Math.round(
+      100 - (cpuLoadPercent * 30) - (memPercent * 0.3) - (diskInfo.usagePercent * 0.2) - (loadAvg[2] / cpuCores * 10)
+    )));
+    
+    // Determine health status
+    let healthStatus = 'healthy';
+    if (healthScore < 40) healthStatus = 'critical';
+    else if (healthScore < 60) healthStatus = 'warning';
+    else if (healthScore < 80) healthStatus = 'fair';
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      hostname: os.hostname(),
+      platform: os.platform() + ' ' + os.release(),
+      health: {
+        score: healthScore,
+        status: healthStatus
+      },
+      cpu: {
+        cores: cpuCores,
+        loadAvg1: loadAvg[0],
+        loadAvg5: loadAvg[1],
+        loadAvg15: loadAvg[2],
+        loadPercent: Math.round(cpuLoadPercent * 100)
+      },
+      memory: {
+        total: totalMem,
+        used: usedMem,
+        free: freeMem,
+        usagePercent: memPercent
+      },
+      disk: {
+        total: diskInfo.total,
+        used: diskInfo.used,
+        free: diskInfo.free,
+        usagePercent: diskInfo.usagePercent,
+        mounts: diskPaths
+      },
+      system: {
+        uptime: uptime,
+        processes: processCount,
+        network: netConnections,
+        nodeVersion: process.version,
+        pid: process.pid
+      }
+    });
+  } catch (err) {
+    console.error('Error in /api/system/health:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API: Получить последние строки из логов OpenClaw
+app.get('/api/system/logs', (req, res) => {
+  try {
+    const lines = parseInt(req.query.lines) || 15;
+    const logFiles = [
+      '/home/openclaw/.openclaw/workspace/agent-dashboard/server.log',
+      '/home/openclaw/.openclaw/workspace/tinkoff-trader.log',
+      '/home/openclaw/.openclaw/workspace/uncle-bob.log',
+      '/home/openclaw/.openclaw/workspace/secret-newspaper.log',
+      '/home/openclaw/.openclaw/workspace/telegram-send.log',
+      '/home/openclaw/.openclaw/workspace/agent-dashboard/server-test.log'
+    ];
+    
+    const logEntries = [];
+    
+    logFiles.forEach(file => {
+      try {
+        if (fs.existsSync(file)) {
+          const content = fs.readFileSync(file, 'utf8');
+          const allLines = content.split('\n').filter(l => l.trim());
+          const lastLines = allLines.slice(-lines);
+          
+          lastLines.forEach(line => {
+            logEntries.push({
+              file: path.basename(file),
+              line: line,
+              timestamp: new Date(fs.statSync(file).mtime).toISOString()
+            });
+          });
+        }
+      } catch (e) { /* skip problematic files */ }
+    });
+    
+    // Sort by timestamp (latest first within reason)
+    logEntries.reverse();
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      totalEntries: logEntries.length,
+      entries: logEntries.slice(0, 50)
+    });
+  } catch (err) {
+    console.error('Error in /api/system/logs:', err);
     res.status(500).json({ error: err.message });
   }
 });

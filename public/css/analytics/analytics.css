@@ -1,0 +1,320 @@
+/**
+ * Analytics Dashboard CSS
+ * Дополнительные стили для панели аналитики
+ */
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.working {
+    background: rgba(0, 255, 0, 0.2);
+    color: #00ff00;
+    border: 1px solid #00ff00;
+}
+
+.status-badge.sleeping {
+    background: rgba(255, 165, 0, 0.2);
+    color: #ffa500;
+    border: 1px solid #ffa500;
+}
+
+.status-badge.idle {
+    background: rgba(255, 255, 0, 0.2);
+    color: #ffff00;
+    border: 1px solid #ffff00;
+}
+
+.status-badge.error {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff0000;
+    border: 1px solid #ff0000;
+}
+
+/* Metric Cards */
+.metric-card {
+    background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+    border-radius: 10px;
+    padding: 20px;
+    border: 2px solid #4cc9f0;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #4cc9f0, #00ff00);
+}
+
+.metric-card .trend {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+.trend.up {
+    color: #00ff00;
+}
+
+.trend.down {
+    color: #ff0000;
+}
+
+.trend.neutral {
+    color: #a9a9a9;
+}
+
+/* Progress Bars */
+.progress-bar {
+    background: #0f3460;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4cc9f0, #00ff00);
+    border-radius: 5px;
+    transition: width 0.5s ease;
+}
+
+/* Tooltips */
+.tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background: #16213e;
+    color: #e6e6e6;
+    text-align: center;
+    border-radius: 6px;
+    padding: 10px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    border: 1px solid #4cc9f0;
+    font-size: 0.9rem;
+}
+
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Animation for value changes */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.value-updated {
+    animation: pulse 0.5s ease;
+}
+
+/* Filter Controls */
+.filter-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    background: #16213e;
+    color: #e6e6e6;
+    border: 2px solid #0f3460;
+    padding: 8px 15px;
+    border-radius: 5px;
+    font-family: 'Courier New', monospace;
+    min-width: 150px;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #4cc9f0;
+}
+
+/* Data Grid */
+.data-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.data-cell {
+    background: #16213e;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #0f3460;
+    text-align: center;
+}
+
+.data-cell .value {
+    font-size: 1.8rem;
+    color: #4cc9f0;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.data-cell .label {
+    font-size: 0.9rem;
+    color: #a9a9a9;
+}
+
+/* Sparkline Charts */
+.sparkline-container {
+    height: 40px;
+    width: 100%;
+    margin: 10px 0;
+}
+
+/* Export Controls */
+.export-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.export-btn {
+    background: #16213e;
+    color: #e6e6e6;
+    border: 2px solid #0f3460;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.export-btn:hover {
+    border-color: #4cc9f0;
+    color: #4cc9f0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .metric-card {
+        padding: 15px;
+    }
+    
+    .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-select {
+        width: 100%;
+    }
+    
+    .export-controls {
+        justify-content: stretch;
+    }
+    
+    .export-btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .nav, .time-filter, .export-controls {
+        display: none;
+    }
+    
+    .card {
+        break-inside: avoid;
+        border: 1px solid #000;
+    }
+    
+    body {
+        background: white;
+        color: black;
+    }
+}
+
+/* Dark mode adjustments (already dark by default) */
+@media (prefers-color-scheme: light) {
+    body {
+        background: #f5f5f5;
+        color: #333;
+    }
+    
+    .card {
+        background: white;
+        border-color: #ddd;
+    }
+    
+    .alert {
+        color: #333;
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .card {
+        border-width: 3px;
+    }
+    
+    .alert {
+        border-left-width: 6px;
+    }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #16213e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #4cc9f0;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00ff00;
+}

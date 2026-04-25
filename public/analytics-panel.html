@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenClaw Analytics Dashboard - Аналитика и тренды</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Courier New', monospace; 
+            background: #1a1a2e; 
+            color: #e6e6e6; 
+            line-height: 1.6; 
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        /* Header */
+        header { 
+            text-align: center; 
+            margin-bottom: 20px; 
+            padding: 25px; 
+            background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+            border-radius: 15px; 
+            border: 2px solid #4cc9f0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        h1 { 
+            color: #4cc9f0; 
+            font-size: 2.8rem; 
+            margin-bottom: 10px; 
+            text-shadow: 0 0 15px rgba(76, 201, 240, 0.7);
+            background: linear-gradient(90deg, #4cc9f0, #a9d6e5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle { 
+            color: #a9a9a9; 
+            font-size: 1.3rem; 
+            margin-bottom: 15px;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .nav-button {
+            padding: 10px 25px;
+            background: #0f3460;
+            border: 2px solid #4cc9f0;
+            border-radius: 8px;
+            color: #e6e6e6;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .nav-button:hover {
+            background: #4cc9f0;
+            color: #1a1a2e;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 201, 240, 0.4);
+        }
+        
+        /* Summary Cards */
+        .summary-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            border-radius: 12px;
+            padding: 25px;
+            border: 2px solid #0f3460;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .summary-card:hover {
+            border-color: #4cc9f0;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+        .summary-card.critical {
+            border-color: #ff4757;
+            animation: pulse 2s infinite;
+        }
+        .summary-card.warning {
+            border-color: #ffa502;
+        }
+        .summary-card.success {
+            border-color: #2ed573;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 71, 87, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+        }
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .summary-title {
+            font-size: 1.2rem;
+            color: #a9a9a9;
+            font-weight: bold;
+        }
+        .summary-icon {
+            font-size: 1.8rem;
+        }
+        .summary-value {
+            font-size: 2.8rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .summary-trend {
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .trend-up {
+            color: #2ed573;
+        }
+        .trend-down {
+            color: #ff4757;
+        }
+        .trend-neutral {
+            color: #a9a9a9;
+        }
+        
+        /* Charts Container */
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+        .chart-panel {
+            background: #16213e;
+            border-radius: 15px;
+            padding: 25px;
+            border: 2px solid #0f3460;
+        }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .chart-title {
+            font-size: 1.4rem;
+            color: #4cc9f0;
+            font-weight: bold;
+        }
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+        }
+        .time-filter {
+            padding: 8px 15px;
+            background: #1a1a2e;
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            color: #e6e6e6;
+            cursor: pointer;
+        }
+        .time-filter.active {
+            background: #4cc9f0;
+            color: #1a1a2e;
+            border-color: #4cc9f0;
+        }
+        .chart-canvas-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        /* Alerts Panel */
+        .alerts-panel {
+            background: #16213e;
+            border-radius: 15px;
+            padding: 25px;
+            border: 2px solid #0f3460;
+            margin-bottom: 25px;
+        }
+        .alerts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .alerts-title {
+            font-size: 1.4rem;
+            color: #4cc9f0;
+            font-weight: bold;
+        }
+        .alert-count {
+            background: #ff4757;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        .alerts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .alert-item {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 5px solid #4cc9f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        .alert-item.critical {
+            border-left-color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+        .alert-item.warning {
+            border-left-color: #ffa502;
+            background: rgba(255, 165, 2, 0.1);
+        }
+        .alert-item.error {
+            border-left-color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+        .alert-content {
+            flex: 1;
+        }
+        .alert-message {
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+            color: #e6e6e6;
+        }
+        .alert-timestamp {
+            font-size: 0.9rem;
+            color: #a9a9a9;
+        }
+        .alert-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .alert-action {
+            padding: 8px 15px;
+            background: #0f3460;
+            border: none;
+            border-radius: 6px;
+            color: #e6e6e6;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .alert-action:hover {
+            background: #4cc9f0;
+            color: #1a1a2e;
+        }
+        
+        /* System Metrics */
+        .metrics-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .metric-card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #0f3460;
+        }
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .metric-title {
+            font-size: 1.2rem;
+            color: #a9a9a9;
+        }
+        .metric-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #4cc9f0;
+            margin-bottom: 10px;
+        }
+        .metric-bar {
+            height: 10px;
+            background: #1a1a2e;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .metric-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4cc9f0, #2ed573);
+            border-radius: 5px;
+            transition: width 1s ease;
+        }
+        .metric-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #a9a9a9;
+        }
+        
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2rem;
+            color: #4cc9f0;
+        }
+        .spinner {
+            border: 4px solid #1a1a2e;
+            border-top: 4px solid #4cc9f0;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #a9a9a9;
+            font-size: 0.9rem;
+            border-top: 1px solid #0f3460;
+            margin-top: 30px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            .summary-panel {
+                grid-template-columns: 1fr;
+            }
+            .metrics-panel {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 OpenClaw Analytics Dashboard</h1>
+            <p class="subtitle">Аналитика активности, тренды использования и системные метрики в реальном времени</p>
+            <div class="nav-buttons">
+                <a href="/" class="nav-button">📋 К списку агентов</a>
+                <button onclick="refreshData()" class="nav-button">🔄 Обновить данные</button>
+                <button onclick="exportData()" class="nav-button">📥 Экспорт данных</button>
+            </div>
+        </header>
+        
+        <!-- Summary Cards -->
+        <div class="summary-panel" id="summary-panel">
+            <div class="loading">
+                <div class="spinner"></div>
+                Загрузка аналитики...
+            </div>
+        </div>
+        
+        <!-- Charts -->
+        <div class="charts-container">
+            <div class="chart-panel">
+                <div class="chart-header">
+                    <h3 class="chart-title">📈 Активность агентов (24 часа)</h3>
+                    <div class="chart-controls">
+                        <button class="time-filter active" onclick="setTimeFilter('24h')">24ч</button>
+                        <button class="time-filter" onclick="setTimeFilter('7d')">7д</button>
+                        <button class="time-filter" onclick="setTimeFilter('30d')">30д</button>
+                    </div>
+                </div>
+                <div class="chart-canvas-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-panel">
+                <div class="chart-header">
+                    <h3 class="chart-title">💾 Использование токенов</h3>
+                    <div class="chart-controls">
+                        <button class="time-filter active" onclick="setTokenFilter('total')">Всего</button>
+                        <button class="time-filter" onclick="setTokenFilter('avg')">В среднем</button>
+                        <button class="time-filter" onclick="setTokenFilter('top')">Топ-5</button>
+                    </div>
+                </div>
+                <div class="chart-canvas-container">
+                    <canvas id="tokenChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Alerts -->
+        <div class="alerts-panel">
+            <div class="alerts-header">
+                <h3 class="alerts-title">⚠️ Активные уведомления</h3>
+                <div class="alert-count" id="alert-count">0</div>
+            </div>
+            <div class="alerts-list" id="alerts-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Загрузка уведомлений...
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Metrics -->
+        <div class="metrics-panel" id="metrics-panel">
+            <div class="loading">
+                <div class="spinner"></div>
+                Загрузка системных метрик...
+            </div>
+        </div>
+        
+        <footer>
+            <p>OpenClaw Analytics Dashboard • Обновлено: <span id="last-update">—</span></p>
+            <p>Данные обновляются автоматически каждые 30 секунд</p>
+        </footer>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let currentAnalytics = null;
+        let activityChart = null;
+        let tokenChart = null;
+        let currentTimeFilter = '24h';
+        let currentTokenFilter = 'total';
+        
+        // Цвета для графиков
+        const chartColors = {
+            working: '#2ed573',
+            idle: '#ffa502',
+            sleeping: '#a9a9a9',
+            error: '#ff4757',
+            tokens: '#4cc9f0',
+            system: '#a9d6e5',
+            background: '#16213e',
+            grid: '#0f3460',
+            text: '#e6e6e6'
+        };
+        
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAnalytics();
+            setInterval(loadAnalytics, 30000); // Обновление каждые 30 секунд
+        });
+        
+        // Загрузка аналитики
+        async function loadAnalytics() {
+            try {
+                const response = await fetch('/api/analytics');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const analytics = await response.json();
+                currentAnalytics = analytics;
+                
+                updateSummary(analytics);
+                updateCharts(analytics);
+                updateAlerts(analytics);
+                updateMetrics(analytics);
+                updateLastUpdate();
+                
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                showError('Ошибка загрузки аналитики');
+            }
+        }
+        
+        // Обновление сводки
+        function updateSummary(analytics) {
+            const summaryPanel = document.getElementById('summary-panel');
+            const current = analytics.current;
+            
+            // Рассчитываем тренды
+            const hourlyData = analytics.hourly;
+            const currentHour = hourlyData[hourlyData.length - 1];
+            const previousHour = hourlyData[hourlyData.length - 2] || currentHour;
+            
+            const agentTrend = currentHour.agentCount - previousHour.agentCount;
+            const tokenTrend = currentHour.totalTokens - previousHour.totalTokens;
+            const workingTrend = currentHour.workingAgents - previousHour.workingAgents;
+            
+            // Определяем статус системы
+            const systemStatus = analytics.alerts.some(a => a.type === 'critical') ? 'critical' :
+                               analytics.alerts.some(a => a.type === 'warning') ? 'warning' : 'success';
+            
+            summaryPanel.innerHTML = `
+                <div class="summary-card ${systemStatus}">
+                    <div class="summary-header">
+                        <div class="summary-title">Статус системы</div>
+                        <div class="summary-icon">${getStatusIcon(systemStatus)}</div>
+                    </div>
+                    <div class="summary-value">${getStatusText(systemStatus)}</div>
+                    <div class="summary-trend">
+                        ${analytics.alerts.length > 0 ? 
+                          `${analytics.alerts.length} активных уведомлений` : 
+                          'Все системы работают нормально'}
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="summary-header">
+                        <div class="summary-title">Активных агентов</div>
+                        <div class="summary-icon">👥</div>
+                    </div>
+                    <div class="summary-value">${current.agentCount}</div>
+                    <div class="summary-trend ${getTrendClass(agentTrend)}">
+                        ${getTrendIcon(agentTrend)} ${Math.abs(agentTrend)} за последний час
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="summary-header">
+                        <div class="summary-title">Использовано токенов</div>
+                        <div class="summary-icon">🔢</div>
+                    </div>
+                    <div class="summary-value">${formatNumber(current.totalTokens)}</div>
+                    <div class="summary-trend ${getTrendClass(tokenTrend)}">
+                        ${getTrendIcon(tokenTrend)} ${formatNumber(Math.abs(tokenTrend))} за последний час
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="summary-header">
+                        <div class="summary-title">Работающих агентов</div>
+                        <div class="summary-icon">⚡</div>
+                    </div>
+                    <div class="summary-value">${current.workingAgents}</div>
+                    <div class="summary-trend ${getTrendClass(workingTrend)}">
+                        ${getTrendIcon(workingTrend)} ${Math.abs(workingTrend)} за последний час
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Обновление графиков
+        function updateCharts(analytics) {
+            updateActivityChart(analytics);
+            updateTokenChart(analytics);
+        }
+        
+        // График активности
+        function updateActivityChart(analytics) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            const hourlyData = analytics.hourly;
+            
+            // Подготавливаем данные в зависимости от фильтра
+            let labels = [];
+            let workingData = [];
+            let idleData = [];
+            let sleepingData = [];
+            let errorData = [];
+            
+            if (currentTimeFilter === '24h') {
+                labels = hourlyData.map(d => new Date(d.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
+                workingData = hourlyData.map(d => d.workingAgents);
+                idleData = hourlyData.map(d => d.idleAgents);
+                sleepingData = hourlyData.map(d => d.sleepingAgents);
+                errorData = hourlyData.map(d => d.errorAgents);
+            } else {
+                // Для 7д и 30д используем дневные данные
+                const dailyData = analytics.daily.slice(-(currentTimeFilter === '7d' ? 7 : 30));
+                labels = dailyData.map(d => new Date(d.date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }));
+                workingData = dailyData.map(d => d.avgWorkingAgents);
+                // Для дневных данных показываем только работающих агентов
+                idleData = new Array(dailyData.length).fill(0);
+                sleepingData = new Array(dailyData.length).fill(0);
+                errorData = new Array(dailyData.length).fill(0);
+            }
+            
+            if (activityChart) {
+                activityChart.destroy();
+            }
+            
+            activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Работающие',
+                            data: workingData,
+                            borderColor: chartColors.working,
+                            backgroundColor: chartColors.working + '20',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Простаивающие',
+                            data: idleData,
+                            borderColor: chartColors.idle,
+                            backgroundColor: chartColors.idle + '20',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Спящие',
+                            data: sleepingData,
+                            borderColor: chartColors.sleeping,
+                            backgroundColor: chartColors.sleeping + '20',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Ошибки',
+                            data: errorData,
+                            borderColor: chartColors.error,
+                            backgroundColor: chartColors.error + '20',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: chartColors.text,
+                                font: {
+                                    family: "'Courier New', monospace"
+                                }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: chartColors.background,
+                            titleColor: chartColors.text,
+                            bodyColor: chartColors.text,
+                            borderColor: chartColors.grid,
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: chartColors.grid
+                            },
+                            ticks: {
+                                color: chartColors.text,
+                                font: {
+                                    family: "'Courier New', monospace"
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: chartColors.grid
+                            },
+                            ticks: {
+                                color: chartColors.text,
+                                font: {
+                                    family: "'Courier New', monospace"
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // График использования токенов
+        function updateTokenChart(analytics) {
+            const ctx = document.getElementById('tokenChart').getContext('2d');
+            
+            if (tokenChart) {
+                tokenChart.destroy();
+            }
+            
+            if (currentTokenFilter === 'total') {
+                // График общего использования токенов
+                const hourlyData = analytics.hourly;
+                const labels = hourlyData.map(d => new Date(d.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
+                const tokenData = hourlyData.map(d => d.totalTokens);
+                
+                tokenChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Использовано токенов',
+                            data: tokenData,
+                            backgroundColor: chartColors.tokens + '80',
+                            borderColor: chartColors.tokens,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: getTokenChartOptions('Общее использование токенов (24 часа)')
+                });
+                
+            } else if (currentTokenFilter === 'avg') {
+                // График среднего использования токенов
+                const hourlyData = analytics.hourly;
+                const labels = hourlyData.map(d => new Date(d.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
+                const avgData = hourlyData.map(d => d.avgTokensPerAgent);
+                
+                tokenChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Среднее на агента',
+                            data: avgData,
+                            borderColor: chartColors.system,
+                            backgroundColor: chartColors.system + '20',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: getTokenChartOptions('Среднее использование токенов на агента')
+                });
+                
+            } else if (currentTokenFilter === 'top') {
+                // Топ-5 агентов по использованию токенов
+                const topAgents = analytics.current.topAgentsByTokens || [];
+                const labels = topAgents.map(a => a.name.substring(0, 15) + (a.name.length > 15 ? '...' : ''));
+                const tokenData = topAgents.map(a => a.tokens);
+                const backgroundColors = topAgents.map((a, i) => 
+                    a.status === 'working' ? chartColors.working + '80' :
+                    a.status === 'error' ? chartColors.error + '80' :
+                    chartColors.sleeping + '80'
+                );
+                
+                tokenChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Токены',
+                            data: tokenData,
+                            backgroundColor: backgroundColors,
+                            borderColor: backgroundColors.map(c => c.replace('80', '')),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: getTokenChartOptions('Топ-5 агентов по использованию токенов')
+                });
+            }
+        }
+        
+        // Настройки графика токенов
+        function getTokenChartOptions(title) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: chartColors.text,
+                            font: {
+                                family: "'Courier New', monospace"
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: title,
+                        color: chartColors.text,
+                        font: {
+                            family: "'Courier New', monospace",
+                            size: 16
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: chartColors.background,
+                        titleColor: chartColors.text,
+                        bodyColor: chartColors.text,
+                        borderColor: chartColors.grid,
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${formatNumber(context.raw)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: chartColors.grid
+                        },
+                        ticks: {
+                            color: chartColors.text,
+                            font: {
+                                family: "'Courier New', monospace"
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: chartColors.grid
+                        },
+                        ticks: {
+                            color: chartColors.text,
+                            font: {
+                                family: "'Courier New', monospace"
+                            },
+                            callback: function(value) {
+                                return formatNumber(value);
+                            }
+                        }
+                    }
+                }
+            };
+        }
+        
+        // Обновление уведомлений
+        function updateAlerts(analytics) {
+            const alertsList = document.getElementById('alerts-list');
+            const alertCount = document.getElementById('alert-count');
+            
+            if (analytics.alerts.length === 0) {
+                alertsList.innerHTML = `
+                    <div class="alert-item">
+                        <div class="alert-content">
+                            <div class="alert-message">✅ Все системы работают нормально</div>
+                            <div class="alert-timestamp">Нет активных уведомлений</div>
+                        </div>
+                    </div>
+                `;
+                alertCount.textContent = '0';
+                alertCount.style.display = 'none';
+                return;
+            }
+            
+            alertCount.textContent = analytics.alerts.length;
+            alertCount.style.display = 'block';
+            
+            alertsList.innerHTML = analytics.alerts.map(alert => `
+                <div class="alert-item ${alert.type}">
+                    <div class="alert-content">
+                        <div class="alert-message">
+                            ${getAlertIcon(alert.type)} ${alert.message}
+                            ${alert.agents ? ` (${alert.agents.join(', ')})` : ''}
+                        </div>
+                        <div class="alert-timestamp">
+                            ${new Date(alert.timestamp).toLocaleString('ru-RU')}
+                        </div>
+                    </div>
+                    <div class="alert-actions">
+                        <button class="alert-action" onclick="acknowledgeAlert('${alert.timestamp}')">Отметить</button>
+                        <button class="alert-action" onclick="showAlertDetails('${alert.timestamp}')">Подробнее</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Обновление системных метрик
+        function updateMetrics(analytics) {
+            const metricsPanel = document.getElementById('metrics-panel');
+            const system = analytics.current.system;
+            
+            metricsPanel.innerHTML = `
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-title">Загрузка CPU</div>
+                        <div>⚡</div>
+                    </div>
+                    <div class="metric-value">${system.cpu.loadAvg[0].toFixed(2)}</div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" style="width: ${Math.min(system.cpu.loadAvg[0] * 10, 100)}%"></div>
+                    </div>
+                    <div class="metric-labels">
+                        <span>0</span>
+                        <span>Средняя за 1 мин</span>
+                        <span>${system.cpu.cores} ядер</span>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-title">Использование памяти</div>
+                        <div>💾</div>
+                    </div>
+                    <div class="metric-value">${system.memory.usagePercent}%</div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" style="width: ${system.memory.usagePercent}%"></div>
+                    </div>
+                    <div class="metric-labels">
+                        <span>${formatBytes(system.memory.free)} свободно</span>
+                        <span>${formatBytes(system.memory.used)} использовано</span>
+                        <span>${formatBytes(system.memory.total)} всего</span>
+                    </div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <div class="metric-title">Время работы</div>
+                        <div>⏱️</div>
+                    </div>
+                    <div class="metric-value">${formatUptime(system.uptime)}</div>
+                    <div class="metric-bar">
+                        <div class="metric-fill" style="width: 100%"></div>
+                    </div>
+                    <div class="metric-labels">
+                        <span>Система работает</span>
+                        <span>с ${new Date(system.timestamp).toLocaleTimeString('ru-RU')}</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Вспомогательные функции
+        function getStatusIcon(status) {
+            switch(status) {
+                case 'critical': return '🔴';
+                case 'warning': return '🟡';
+                case 'success': return '🟢';
+                default: return '⚪';
+            }
+        }
+        
+        function getStatusText(status) {
+            switch(status) {
+                case 'critical': return 'Критический';
+                case 'warning': return 'Предупреждение';
+                case 'success': return 'Нормальный';
+                default: return 'Неизвестно';
+            }
+        }
+        
+        function getTrendClass(trend) {
+            if (trend > 0) return 'trend-up';
+            if (trend < 0) return 'trend-down';
+            return 'trend-neutral';
+        }
+        
+        function getTrendIcon(trend) {
+            if (trend > 0) return '↗️';
+            if (trend < 0) return '↘️';
+            return '➡️';
+        }
+        
+        function getAlertIcon(type) {
+            switch(type) {
+                case 'critical': return '🔴';
+                case 'warning': return '🟡';
+                case 'error': return '❌';
+                default: return 'ℹ️';
+            }
+        }
+        
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+        
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            if (days > 0) return `${days}д ${hours}ч`;
+            if (hours > 0) return `${hours}ч ${minutes}м`;
+            return `${minutes} минут`;
+        }
+        
+        function updateLastUpdate() {
+            document.getElementById('last-update').textContent = 
+                new Date().toLocaleTimeString('ru-RU');
+        }
+        
+        function showError(message) {
+            const summaryPanel = document.getElementById('summary-panel');
+            summaryPanel.innerHTML = `
+                <div class="summary-card critical" style="grid-column: 1 / -1;">
+                    <div class="summary-header">
+                        <div class="summary-title">Ошибка</div>

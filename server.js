@@ -5,6 +5,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const chokidar = require('chokidar');
 const cors = require('cors');
+const AnalyticsModule = require('./analytics-module');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,6 +31,9 @@ const AGENT_SPRITES = {
   'error': '🟥',
   'offline': '⬛'
 };
+
+// Инициализация аналитического модуля
+const analyticsModule = new AnalyticsModule();
 
 // Функция для получения списка агентов
 async function getAgents() {
@@ -160,6 +164,15 @@ function watchWorkspace() {
 async function updateAgents() {
   try {
     const agents = await getAgents();
+    
+    // Собираем аналитические данные
+    try {
+      const analytics = await analyticsModule.collectData(agents);
+      io.emit('analytics-update', analytics);
+    } catch (analyticsErr) {
+      console.error('Error collecting analytics:', analyticsErr);
+    }
+    
     io.emit('agents-update', agents);
     console.log(`Sent update for ${agents.length} agents`);
   } catch (err) {
@@ -172,6 +185,27 @@ app.get('/api/agents', async (req, res) => {
   try {
     const agents = await getAgents();
     res.json(agents);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API endpoint для получения аналитики
+app.get('/api/analytics', async (req, res) => {
+  try {
+    const agents = await getAgents();
+    const analytics = await analyticsModule.collectData(agents);
+    res.json(analytics);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// API endpoint для получения сводки аналитики
+app.get('/api/analytics/summary', async (req, res) => {
+  try {
+    const summary = analyticsModule.getAnalyticsSummary();
+    res.json(summary);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
