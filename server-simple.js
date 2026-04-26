@@ -800,6 +800,179 @@ app.get('/api/system/logs', (req, res) => {
   }
 });
 
+// API endpoint для получения списка сервисов и таймеров
+app.get('/api/services', (req, res) => {
+  try {
+    const workspacePath = '/home/openclaw/.openclaw/workspace';
+    const files = fs.readdirSync(workspacePath);
+    
+    const serviceFiles = files.filter(f => f.endsWith('.service'));
+    const timerFiles = files.filter(f => f.endsWith('.timer'));
+    
+    // Map timers to services
+    const timerMap = {};
+    timerFiles.forEach(tf => {
+      const baseName = tf.replace('.timer', '');
+      if (!timerMap[baseName]) timerMap[baseName] = [];
+      timerMap[baseName].push(tf);
+    });
+    
+    const services = [];
+    
+    serviceFiles.forEach(sf => {
+      const baseName = sf.replace('.service', '');
+      
+      let serviceContent = '';
+      try {
+        serviceContent = fs.readFileSync(path.join(workspacePath, sf), 'utf8');
+      } catch (e) { serviceContent = ''; }
+      
+      const execMatch = serviceContent.match(/ExecStart=(.+)/);
+      const descMatch = serviceContent.match(/Description=(.+)/);
+      const workingDirMatch = serviceContent.match(/WorkingDirectory=(.+)/);
+      
+      const timerFilesForService = timerMap[baseName] || [];
+      const timers = [];
+      timerFilesForService.forEach(timerFile => {
+        let timerContent = '';
+        try {
+          timerContent = fs.readFileSync(path.join(workspacePath, timerFile), 'utf8');
+        } catch (e) {}
+        
+        const onCalendarMatch = timerContent.match(/OnCalendar=(.+)/);
+        const onBootMatch = timerContent.match(/OnBootSec=(.+)/);
+        
+        timers.push({
+          file: timerFile,
+          onCalendar: onCalendarMatch ? onCalendarMatch[1].trim() : null,
+          onBootSec: onBootMatch ? onBootMatch[1].trim() : null
+        });
+      });
+      
+      // Try systemd status
+      let systemdActive = false;
+      let systemdStatus = 'unknown';
+      let systemdEnabled = false;
+      let lastRunTime = null;
+      let nextRunTime = null;
+      
+      try {
+        const statusOut = execSync('systemctl is-active ' + baseName + ' 2>/dev/null', { timeout: 3000 }).toString().trim();
+        systemdActive = statusOut === 'active';
+        systemdStatus = statusOut;
+        
+        const enabledOut = execSync('systemctl is-enabled ' + baseName + ' 2>/dev/null', { timeout: 3000 }).toString().trim();
+        systemdEnabled = enabledOut === 'enabled';
+        
+        if (timerFilesForService.length > 0) {
+          try {
+            const timerInfo = execSync('systemctl show ' + timerFilesForService[0].replace('.timer', '') + '.timer --property=LastTriggerUSec --property=NextElapseUSecReal 2>/dev/null', { timeout: 3000 }).toString().trim();
+            timerInfo.split('\n').forEach(line => {
+              if (line.startsWith('LastTriggerUSec=')) {
+                const val = line.split('=')[1];
+                if (val && val !== '') lastRunTime = val;
+              }
+              if (line.startsWith('NextElapseUSecReal=')) {
+                const val = line.split('=')[1];
+                if (val && val !== '') nextRunTime = val;
+              }
+            });
+          } catch (e) {}
+        }
+      } catch (e) {}
+      
+      // Calculate log file size for status indication
+      let logSizeBytes = 0;
+      const logPath = path.join(workspacePath, baseName + '.log');
+      try {
+        if (fs.existsSync(logPath)) {
+          logSizeBytes = fs.statSync(logPath).size;
+        }
+      } catch (e) {}
+      
+      services.push({
+        name: baseName,
+        file: sf,
+        description: descMatch ? descMatch[1].trim() : baseName,
+        execStart: execMatch ? execMatch[1].trim() : 'N/A',
+        workingDirectory: workingDirMatch ? workingDirMatch[1].trim() : workspacePath,
+        timers,
+        systemd: {
+          active: systemdActive,
+          status: systemdStatus,
+          enabled: systemdEnabled,
+          lastRun: lastRunTime,
+          nextRun: nextRunTime
+        },
+        logSizeBytes
+      });
+    });
+    
+    services.sort((a, b) => a.name.localeCompare(b.name));
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      serviceDir: workspacePath,
+      total: services.length,
+      services
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API endpoint для получения логов сервиса
+app.get('/api/services/:name/logs', (req, res) => {
+  try {
+    const serviceName = req.params.name;
+    const lines = parseInt(req.query.lines) || 20;
+    const workspacePath = '/home/openclaw/.openclaw/workspace';
+    
+    const logPatterns = [
+      path.join(workspacePath, serviceName + '.log'),
+      path.join(workspacePath, serviceName + '-trades.log'),
+      path.join(workspacePath, serviceName + '.json')
+    ];
+    
+    let logContent = '';
+    let sourceFile = '';
+    for (const logPath of logPatterns) {
+      if (fs.existsSync(logPath)) {
+        try {
+          const content = fs.readFileSync(logPath, 'utf8');
+          const allLines = content.split('\n').filter(l => l.trim());
+          const lastLines = allLines.slice(-lines);
+          logContent = lastLines.join('\n');
+          sourceFile = path.basename(logPath);
+          break;
+        } catch (e) { continue; }
+      }
+    }
+    
+    // Try journalctl
+    if (!logContent) {
+      try {
+        const journalOut = execSync('journalctl -u ' + serviceName + ' --no-pager -n ' + lines + ' 2>/dev/null', { timeout: 3000 }).toString().trim();
+        if (journalOut) {
+          logContent = journalOut;
+          sourceFile = 'journalctl';
+        }
+      } catch (e) {}
+    }
+    
+    res.json({
+      success: true,
+      service: serviceName,
+      source: sourceFile,
+      lines: logContent ? logContent.split('\n').length : 0,
+      log: logContent
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // WebSocket соединения
 io.on('connection', (socket) => {
   console.log('New client connected');

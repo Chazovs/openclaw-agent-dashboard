@@ -522,6 +522,149 @@
                 font-size: 1rem;
                 font-weight: bold;
                 margin-bottom: 15px;
+            .services-summary-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+            .services-stat-card {
+                background: #1a1a2e;
+                border-radius: 8px;
+                padding: 15px;
+                text-align: center;
+                border: 1px solid #0f3460;
+            }
+            .services-stat-card.highlight {
+                border-color: #2ed573;
+                background: linear-gradient(135deg, #1a1a2e 0%, #1e2e1e 100%);
+            }
+            .services-stat-value {
+                font-size: 1.8rem;
+                color: #2ed573;
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+            .services-stat-label {
+                color: #a9a9a9;
+                font-size: 0.78rem;
+            }
+            .services-list {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                max-height: 600px;
+                overflow-y: auto;
+            }
+            .service-card {
+                background: #1a1a2e;
+                border-radius: 8px;
+                padding: 12px 15px;
+                border: 1px solid #0f3460;
+                transition: all 0.2s;
+                cursor: pointer;
+            }
+            .service-card:hover {
+                border-color: #2ed573;
+            }
+            .service-card.active-service {
+                border-color: #2ed573;
+                border-left: 4px solid #2ed573;
+            }
+            .service-card.inactive-service {
+                border-color: #f05454;
+                border-left: 4px solid #f05454;
+                opacity: 0.8;
+            }
+            .service-card-header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 8px;
+            }
+            .service-status-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+            .service-status-dot.active { background: #2ed573; box-shadow: 0 0 8px #2ed573; }
+            .service-status-dot.inactive { background: #f05454; }
+            .service-status-dot.unknown { background: #a9a9a9; }
+            .service-name {
+                color: #e6e6e6;
+                font-weight: bold;
+                font-size: 0.9rem;
+                flex: 1;
+            }
+            .service-timer-badge {
+                background: rgba(46, 213, 115, 0.15);
+                color: #2ed573;
+                font-size: 0.7rem;
+                padding: 2px 8px;
+                border-radius: 8px;
+                border: 1px solid rgba(46, 213, 115, 0.3);
+            }
+            .service-no-timer {
+                color: #a9a9a9;
+                font-size: 0.7rem;
+            }
+            .service-desc {
+                color: #a9a9a9;
+                font-size: 0.8rem;
+                margin-bottom: 6px;
+                padding-left: 20px;
+            }
+            .service-details {
+                display: none;
+                margin-top: 10px;
+                padding-top: 10px;
+                border-top: 1px solid #0f3460;
+            }
+            .service-details.active {
+                display: block;
+            }
+            .service-detail-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 6px;
+                font-size: 0.8rem;
+            }
+            .service-detail-label {
+                color: #a9a9a9;
+            }
+            .service-detail-value {
+                color: #e6e6e6;
+                font-family: monospace;
+                font-size: 0.78rem;
+                max-width: 60%;
+                text-align: right;
+                word-break: break-all;
+            }
+            .service-log-viewer {
+                background: #0a0a1a;
+                border-radius: 6px;
+                padding: 10px;
+                max-height: 200px;
+                overflow-y: auto;
+                font-family: 'Courier New', monospace;
+                font-size: 0.72rem;
+                line-height: 1.4;
+                border: 1px solid #0f3460;
+                margin-top: 8px;
+                white-space: pre-wrap;
+            }
+            .service-log-loading {
+                color: #a9a9a9;
+                text-align: center;
+                padding: 10px;
+                font-style: italic;
+            }
+            .service-log-error {
+                color: #f05454;
+                text-align: center;
+                padding: 10px;
+            }
                 padding-bottom: 8px;
                 border-bottom: 1px solid #0f3460;
             }
@@ -675,6 +818,24 @@
             }
         </style>
 
+        <!-- Services & Cron Panel -->
+        <div class="health-panel" id="services-panel">
+            <div class="health-header" onclick="toggleServicesPanel()">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="services-icon" style="font-size: 1.5rem;">⚙️</span>
+                    <h3 style="color: #2ed573; margin: 0;">Сервисы и Cron задачи</h3>
+                    <span id="services-badge" class="health-badge" style="background: rgba(46, 213, 115, 0.2); color: #2ed573; border: 1px solid #2ed573;">Загрузка...</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span id="services-summary" style="color: #a9a9a9; font-size: 0.85rem;"></span>
+                    <span id="services-toggle-icon" style="color: #2ed573; font-size: 1.2rem;">▼</span>
+                </div>
+            </div>
+            <div class="health-body" id="services-body">
+                <div class="loading" style="grid-column: 1 / -1;">Нажмите чтобы раскрыть ⚙️</div>
+            </div>
+        </div>
+        
         <!-- System Health Panel -->
         <div class="health-panel" id="health-panel">
             <div class="health-header" onclick="toggleHealthPanel()">
@@ -1470,6 +1631,241 @@
             
             // Update last update time
             updateLastUpdate();
+        }
+        
+        // ========== Services & Cron Panel ==========
+        let servicesPanelOpen = false;
+        let servicesRefreshInterval = null;
+        let servicesData = null;
+        
+        // Toggle services panel
+        function toggleServicesPanel() {
+            const body = document.getElementById('services-body');
+            const icon = document.getElementById('services-toggle-icon');
+            servicesPanelOpen = !servicesPanelOpen;
+            body.classList.toggle('active', servicesPanelOpen);
+            icon.textContent = servicesPanelOpen ? '▲' : '▼';
+            
+            if (servicesPanelOpen) {
+                loadServicesPanel();
+                if (servicesRefreshInterval) clearInterval(servicesRefreshInterval);
+                servicesRefreshInterval = setInterval(loadServicesPanel, 15000);
+            } else {
+                if (servicesRefreshInterval) {
+                    clearInterval(servicesRefreshInterval);
+                    servicesRefreshInterval = null;
+                }
+            }
+        }
+        
+        // Load services data
+        async function loadServicesPanel() {
+            const body = document.getElementById('services-body');
+            const badge = document.getElementById('services-badge');
+            const summary = document.getElementById('services-summary');
+            
+            try {
+                const response = await fetch('/api/services');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                
+                if (!data.success || !data.services) throw new Error('Invalid response');
+                
+                servicesData = data;
+                
+                // Update summary stats
+                const total = data.services.length;
+                const activeCount = data.services.filter(s => s.systemd && s.systemd.active).length;
+                const timerCount = data.services.filter(s => s.timers && s.timers.length > 0).length;
+                
+                badge.textContent = total + ' сервисов';
+                summary.textContent = activeCount > 0 
+                    ? '✅ ' + activeCount + ' активны, ' + (total - activeCount) + ' неактивны'
+                    : '🔴 ' + total + ' сервисов системd не зарегистрированы';
+                
+                // Render
+                renderServicesPanel(data, body);
+                
+            } catch (err) {
+                body.innerHTML = '<div class="service-log-error">❌ Ошибка загрузки: ' + err.message + '</div>';
+                badge.textContent = 'Ошибка';
+            }
+        }
+        
+        // Render services panel
+        function renderServicesPanel(data, container) {
+            const services = data.services;
+            const activeCount = services.filter(s => s.systemd && s.systemd.active).length;
+            const timerCount = services.filter(s => s.timers && s.timers.length > 0).length;
+            const withLogs = services.filter(s => s.logSizeBytes > 0).length;
+            
+            let html = '';
+            
+            // Summary cards
+            html += '<div class="services-summary-grid">';
+            html += '<div class="services-stat-card highlight"><div class="services-stat-value">' + services.length + '</div><div class="services-stat-label">Всего сервисов</div></div>';
+            html += '<div class="services-stat-card"><div class="services-stat-value" style="color: ' + (activeCount > 0 ? '#2ed573' : '#f05454') + ';">' + activeCount + '</div><div class="services-stat-label">Активных (systemd)</div></div>';
+            html += '<div class="services-stat-card"><div class="services-stat-value" style="color: #f0a04c;">' + timerCount + '</div><div class="services-stat-label">С таймерами</div></div>';
+            html += '<div class="services-stat-card"><div class="services-stat-value" style="color: #4cc9f0;">' + withLogs + '</div><div class="services-stat-label">Есть логи</div></div>';
+            html += '</div>';
+            
+            // Service cards
+            html += '<div class="services-list">';
+            
+            services.forEach(svc => {
+                const isActive = svc.systemd && svc.systemd.active;
+                const hasTimer = svc.timers && svc.timers.length > 0;
+                const cardClass = isActive ? 'active-service' : 'inactive-service';
+                const dotClass = isActive ? 'active' : 'inactive';
+                
+                // Format timer schedule
+                let timerInfo = '';
+                if (hasTimer) {
+                    const schedules = svc.timers.map(t => {
+                        if (t.onCalendar) {
+                            let display = t.onCalendar;
+                            // Try to humanize common cron patterns
+                            if (display === '*-*-* 20:00:00') display = 'Ежедневно 20:00';
+                            else if (display === '*:0/3') display = 'Каждые 3 мин';
+                            else if (display === '*:0/5') display = 'Каждые 5 мин';
+                            else if (display === '*:0/1') display = 'Каждую минуту';
+                            else if (display === '*:0/10') display = 'Каждые 10 мин';
+                            else if (display === '*:0/15') display = 'Каждые 15 мин';
+                            else if (display === '*:0/30') display = 'Каждые 30 мин';
+                            else if (display === '*-*-* 09:00:00') display = 'Ежедневно 09:00';
+                            else if (display === '*-*-* 18:00:00') display = 'Ежедневно 18:00';
+                            else if (display === '0 * * * *') display = 'Каждый час';
+                            return display;
+                        }
+                        if (t.onBootSec) return 'Через ' + t.onBootSec + ' после загрузки';
+                        return t.file;
+                    }).join(', ');
+                    timerInfo = '<span class="service-timer-badge">🕐 ' + schedules + '</span>';
+                } else {
+                    timerInfo = '<span class="service-no-timer">Без таймера</span>';
+                }
+                
+                html += '<div class="service-card ' + cardClass + '" onclick="toggleServiceDetails(\'' + svc.name + '\')">';
+                html += '<div class="service-card-header">';
+                html += '<div class="service-status-dot ' + dotClass + '"></div>';
+                html += '<span class="service-name">' + escapeHtml(svc.name) + '</span>';
+                html += timerInfo;
+                html += '</div>';
+                html += '<div class="service-desc">' + escapeHtml(svc.description) + '</div>';
+                
+                // Details (hidden by default)
+                html += '<div class="service-details" id="svc-details-' + svc.name + '">';
+                html += '<div class="service-detail-row"><span class="service-detail-label">Exec:</span><span class="service-detail-value">' + escapeHtml(svc.execStart) + '</span></div>';
+                if (svc.systemd) {
+                    html += '<div class="service-detail-row"><span class="service-detail-label">Systemd статус:</span><span class="service-detail-value">' + svc.systemd.status + (svc.systemd.enabled ? ' (включен)' : ' (не включен)') + '</span></div>';
+                    if (svc.systemd.lastRun) html += '<div class="service-detail-row"><span class="service-detail-label">Последний запуск:</span><span class="service-detail-value">' + formatTimerDate(svc.systemd.lastRun) + '</span></div>';
+                    if (svc.systemd.nextRun) html += '<div class="service-detail-row"><span class="service-detail-label">Следующий запуск:</span><span class="service-detail-value">' + formatTimerDate(svc.systemd.nextRun) + '</span></div>';
+                }
+                if (hasTimer) {
+                    html += '<div class="service-detail-row"><span class="service-detail-label">Timer файл(ы):</span><span class="service-detail-value">' + svc.timers.map(t => t.file).join(', ') + '</span></div>';
+                }
+                if (svc.logSizeBytes > 0) {
+                    html += '<div class="service-detail-row"><span class="service-detail-label">Размер лога:</span><span class="service-detail-value">' + formatBytes(svc.logSizeBytes) + '</span></div>';
+                }
+                
+                // Log viewer toggle
+                html += '<button class="health-refresh-btn" onclick="event.stopPropagation(); loadServiceLog(\'' + svc.name + '\')" style="margin-top: 10px; padding: 6px 14px; background: #0f3460; color: #4cc9f0; border: 1px solid #4cc9f0; border-radius: 6px; cursor: pointer; font-size: 0.8rem;">📋 Показать последние логи</button>';
+                html += '<div id="svc-log-' + svc.name + '" class="service-log-viewer" style="display: none;"><div class="service-log-loading">Загрузка...</div></div>';
+                
+                html += '</div>';
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            
+            // Last update timestamp
+            html += '<div style="margin-top: 15px; color: #555; font-size: 0.75rem; text-align: right;">Обновлено: ' + new Date(data.timestamp).toLocaleTimeString() + '</div>';
+            
+            container.innerHTML = html;
+            
+            // Auto-open previously open service details
+            if (window._openServiceDetails) {
+                window._openServiceDetails.forEach(name => {
+                    const details = document.getElementById('svc-details-' + name);
+                    if (details) details.classList.add('active');
+                });
+            }
+        }
+        
+        // Toggle service details
+        function toggleServiceDetails(name) {
+            const details = document.getElementById('svc-details-' + name);
+            if (details) {
+                details.classList.toggle('active');
+                
+                // Track open details state
+                if (!window._openServiceDetails) window._openServiceDetails = [];
+                const idx = window._openServiceDetails.indexOf(name);
+                if (idx >= 0) {
+                    window._openServiceDetails.splice(idx, 1);
+                } else {
+                    window._openServiceDetails.push(name);
+                }
+            }
+        }
+        
+        // Load service logs
+        async function loadServiceLog(name) {
+            const logContainer = document.getElementById('svc-log-' + name);
+            if (!logContainer) return;
+            
+            // Toggle visibility
+            if (logContainer.style.display !== 'none') {
+                logContainer.style.display = 'none';
+                return;
+            }
+            
+            logContainer.style.display = 'block';
+            logContainer.innerHTML = '<div class="service-log-loading">⏳ Загрузка логов...</div>';
+            
+            try {
+                const response = await fetch('/api/services/' + encodeURIComponent(name) + '/logs?lines=25');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                
+                if (data.log) {
+                    // Color-code log lines for readability
+                    let formattedLog = data.log;
+                    // Highlight error/warning lines
+                    formattedLog = formattedLog.replace(/ERROR|Error|❌|FAIL|CRITICAL/g, match => '\u001b[31m' + match + '\u001b[0m');
+                    formattedLog = formattedLog.replace(/WARNING|WARN|Warning/g, match => '\u001b[33m' + match + '\u001b[0m');
+                    
+                    logContainer.innerHTML = '<div style="margin-bottom: 6px; color: #4cc9f0; font-size: 0.7rem;">Источник: ' + (data.source || 'неизвестно') + '</div>';
+                    logContainer.innerHTML += '<pre style="margin: 0; white-space: pre-wrap; color: #ccc;">' + escapeHtml(data.log) + '</pre>';
+                } else {
+                    logContainer.innerHTML = '<div class="service-log-error">📭 Логи не найдены</div>';
+                }
+            } catch (err) {
+                logContainer.innerHTML = '<div class="service-log-error">❌ ' + err.message + '</div>';
+            }
+        }
+        
+        // Format timer date from systemd format
+        function formatTimerDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            // systemd format: "Sun 2026-04-26 08:05:50 UTC" or similar
+            try {
+                const date = new Date(dateStr);
+                if (!isNaN(date.getTime())) {
+                    return date.toLocaleString();
+                }
+            } catch (e) {}
+            return dateStr;
+        }
+        
+        // Escape HTML special chars
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         }
         
         // Start dashboard when page loads

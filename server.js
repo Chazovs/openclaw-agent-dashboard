@@ -5,6 +5,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const chokidar = require('chokidar');
 const cors = require('cors');
+const { execSync } = require('child_process');
 const AnalyticsModule = require('./analytics-module');
 
 const app = express();
@@ -201,62 +202,201 @@ app.get('/api/analytics', async (req, res) => {
   }
 });
 
-// API endpoint для получения сводки аналитики
-app.get('/api/analytics/summary', async (req, res) => {
+// API endpoint для получения списка сервисов и таймеров
+app.get('/api/services', async (req, res) => {
   try {
-    const summary = analyticsModule.getAnalyticsSummary();
-    res.json(summary);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Статический HTML
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// WebSocket соединения
-io.on('connection', (socket) => {
-  console.log('New client connected');
-  
-  // Отправляем текущий список агентов
-  getAgents().then(agents => {
-    socket.emit('agents-update', agents);
-  });
-  
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-});
-
-// Запуск мониторинга и сервера
-async function startServer() {
-  try {
-    // Проверяем доступность OpenClaw директории
-    if (!await fs.pathExists(OPENCLAW_HOME)) {
-      console.warn(`OpenClaw directory not found at ${OPENCLAW_HOME}`);
-    } else {
-      console.log(`Using OpenClaw directory: ${OPENCLAW_HOME}`);
-      watchWorkspace();
-    }
+    const servicesDir = WORKSPACE_PATH;
+    const files = await fs.readdir(servicesDir);
     
-    const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => {
-      console.log(`Agent Dashboard running on http://localhost:${PORT}`);
-      console.log('WebSocket server ready');
+    const serviceFiles = files.filter(f => f.endsWith('.service'));
+    const timerFiles = files.filter(f => f.endsWith('.timer'));
+    
+    // Map timers to services
+    const timerMap = {};
+    timerFiles.forEach(tf => {
+      const baseName = tf.replace('.timer', '');
+      if (!timerMap[baseName]) timerMap[baseName] = [];
+      timerMap[baseName].push(tf);
     });
     
-    // Первоначальное обновление
-    updateAgents();
+    const services = [];
     
-    // Периодическое обновление каждые 30 секунд
-    setInterval(updateAgents, 30000);
+    for (const sf of serviceFiles) {
+      const baseName = sf.replace('.service', '');
+      
+      // Read service file contents
+      let serviceContent = '';
+      try {
+        serviceContent = await fs.readFile(path.join(servicesDir, sf), 'utf8');
+      } catch (e) { serviceContent = 'Cannot read file'; }
+      
+      // Extract ExecStart
+      const execMatch = serviceContent.match(/ExecStart=(.+)/);
+      const descMatch = serviceContent.match(/Description=(.+)/);
+      const workingDirMatch = serviceContent.match(/WorkingDirectory=(.+)/);
+      
+      // Get timer info if exists
+      const timerFilesForService = timerMap[baseName] || [];
+      const timers = [];
+      for (const timerFile of timerFilesForService) {
+        let timerContent = '';
+        try {
+          timerContent = await fs.readFile(path.join(servicesDir, timerFile), 'utf8');
+        } catch (e) { timerContent = ''; }
+        
+        const onCalendarMatch = timerContent.match(/OnCalendar=(.+)/);
+        const onBootMatch = timerContent.match(/OnBootSec=(.+)/);
+        
+        timers.push({
+          file: timerFile,
+          onCalendar: onCalendarMatch ? onCalendarMatch[1].trim() : null,
+          onBootSec: onBootMatch ? onBootMatch[1].trim() : null
+        });
+      }
+      
+      // Try to get systemd status
+      let systemdStatus = 'unknown';
+      let systemdActive = false;
+      let systemdEnabled = false;
+      let lastRunTime = null;
+      let nextRunTime = null;
+      try {
+        const statusOut = execSync(`systemctl is-active ${baseName} 2>/dev/null`, { timeout: 3000 }).toString().trim();
+        systemdActive = statusOut === 'active';
+        systemdStatus = statusOut;
+        
+        const enabledOut = execSync(`systemctl is-enabled ${baseName} 2>/dev/null`, { timeout: 3000 }).toString().trim();
+        systemdEnabled = enabledOut === 'enabled';
+        
+        // Get timer status for last trigger
+        if (timers.length > 0) {
+          try {
+            const timerInfo = execSync(`systemctl show ${timerFilesForService[0].replace('.timer', '')}.timer --property=LastTriggerUSec --property=NextElapseUSecReal 2>/dev/null`, { timeout: 3000 }).toString().trim();
+            timerInfo.split('\n').forEach(line => {
+              if (line.startsWith('LastTriggerUSec=')) {
+                const val = line.split('=')[1];
+                if (val && val !== '') lastRunTime = val;
+              }
+              if (line.startsWith('NextElapseUSecReal=')) {
+                const val = line.split('=')[1];
+                if (val && val !== '') nextRunTime = val;
+              }
+            });
+          } catch (e) { /* timer not registered */ }
+        }
+      } catch (e) { /* not a systemd service */ }
+      
+      services.push({
+        name: baseName,
+        file: sf,
+        description: descMatch ? descMatch[1].trim() : baseName,
+        execStart: execMatch ? execMatch[1].trim() : 'N/A',
+        workingDirectory: workingDirMatch ? workingDirMatch[1].trim() : servicesDir,
+        timers,
+        systemd: {
+          active: systemdActive,
+          status: systemdStatus,
+          enabled: systemdEnabled,
+          lastRun: lastRunTime,
+          nextRun: nextRunTime
+        }
+      });
+    }
     
+    // Sort by name
+    services.sort((a, b) => a.name.localeCompare(b.name));
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      serviceDir: servicesDir,
+      total: services.length,
+      services
+    });
   } catch (err) {
-    console.error('Failed to start server:', err);
-    process.exit(1);
+    res.status(500).json({ success: false, error: err.message });
   }
-}
+});
 
-startServer();
+// API endpoint для получения последних логов сервиса
+app.get('/api/services/:name/logs', async (req, res) => {
+  try {
+    const serviceName = req.params.name;
+    const lines = parseInt(req.query.lines) || 20;
+    
+    // Look for log files in workspace
+    const logPatterns = [
+      path.join(WORKSPACE_PATH, `${serviceName}.log`),
+      path.join(WORKSPACE_PATH, `${serviceName}-trades.log`),
+      path.join(WORKSPACE_PATH, `${serviceName}.json`)
+    ];
+    
+    let logContent = '';
+    for (const logPath of logPatterns) {
+      if (await fs.pathExists(logPath)) {
+        try {
+          const content = await fs.readFile(logPath, 'utf8');
+          const allLines = content.split('\n').filter(l => l.trim());
+          const lastLines = allLines.slice(-lines);
+          logContent = lastLines.join('\n');
+          break;
+        } catch (e) { continue; }
+      }
+    }
+    
+    // Try journalctl for systemd services
+    if (!logContent) {
+      try {
+        const journalOut = execSync(`journalctl -u ${serviceName} --no-pager -n ${lines} 2>/dev/null`, { timeout: 3000 }).toString().trim();
+        if (journalOut) {
+          logContent = journalOut;
+        }
+      } catch (e) { /* journalctl not available */ }
+    }
+    
+    res.json({
+      success: true,
+      service: serviceName,
+      lines: logContent ? logContent.split('\n').length : 0,
+      log: logContent
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API endpoint для ручного запуска сервиса
+app.post('/api/services/:name/restart', async (req, res) => {
+  try {
+    const serviceName = req.params.name;
+    
+    try {
+      const out = execSync(`sudo systemctl restart ${serviceName} 2>&1`, { timeout: 10000 }).toString().trim();
+      res.json({ success: true, message: `Service ${serviceName} restarted`, output: out });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.stderr ? e.stderr.toString().trim() : e.message });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API endpoint для получения статуса служб через systemctl list-units
+app.get('/api/services/systemd', async (req, res) => {
+  try {
+    const out = execSync(`systemctl list-units --type=service --all --no-pager --no-legend 2>/dev/null | head -50`, { timeout: 5000 }).toString().trim();
+    const units = out.split('\n').filter(l => l.trim()).map(line => {
+      const parts = line.trim().split(/\s+/);
+      return {
+        unit: parts[0] || '',
+        load: parts[1] || '',
+        active: parts[2] || '',
+        sub: parts[3] || '',
+        description: parts.slice(4).join(' ') || ''
+      };
+    });
+    res.json({ success: true, units });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
