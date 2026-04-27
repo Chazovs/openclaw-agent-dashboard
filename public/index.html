@@ -484,6 +484,23 @@
             </div>
         </div>
 
+        <!-- Trading Monitor Panel -->
+        <div class="health-panel" id="trade-panel">
+            <div class="health-header" onclick="toggleTradePanel()">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.3rem;">💹</span>
+                    <span style="color: #4cc9f0; font-size: 1.1rem; font-weight: bold;">📊 Trading Monitor</span>
+                    <span id="trade-live-badge" class="health-badge" style="background: rgba(76, 201, 240, 0.2); color: #4cc9f0; border: 1px solid #4cc9f0;">Боты</span>
+                    <span id="trade-summary-text" style="color: #a9a9a9; font-size: 0.85rem;"></span>
+                </div>
+                <span id="trade-panel-toggle-icon" style="color: #4cc9f0; font-size: 1.2rem;">▼</span>
+            </div>
+            <div class="health-body" id="trade-panel-body">
+                <div id="trade-summary"><div class="loading" style="grid-column: 1 / -1;">Нажмите чтобы раскрыть 💹</div></div>
+                <div id="trade-bots"></div>
+            </div>
+        </div>
+
         <style>
             /* Token & Cost Panel Styles */
             .cost-summary-grid {
@@ -1871,4 +1888,5 @@
         // Start dashboard when page loads
         window.addEventListener('load', initDashboard);</script>
     <script src="/token-costs.js"></script>
+    <script src="/trade-panel.js"></script>
 </body></html>

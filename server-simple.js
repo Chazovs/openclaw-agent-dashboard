@@ -922,6 +922,204 @@ app.get('/api/services', (req, res) => {
   }
 });
 
+// ============================================================
+// TRADING MONITOR API — анализ логов торговых ботов
+// ============================================================
+
+// Конфигурация торговых ботов
+const TRADING_BOTS = [
+  {
+    id: 'bybit-mean-reversion',
+    name: 'Bybit Mean Reversion',
+    emoji: '📉',
+    logPath: '/home/openclaw/.openclaw/workspace/bybit-trades.log',
+    jsonPath: '/home/openclaw/.openclaw/workspace/bybit-trades.json',
+    serviceName: 'bybit-trader'
+  },
+  {
+    id: 'bybit-scalp',
+    name: 'Bybit Scalp',
+    emoji: '⚡',
+    logPath: '/home/openclaw/.openclaw/workspace/bybit-aggressive-trades.log',
+    jsonPath: '/home/openclaw/.openclaw/workspace/bybit-aggressive-trades.json',
+    serviceName: 'bybit-aggressive-trader'
+  },
+  {
+    id: 'memecoin-trader',
+    name: 'Memecoin Trader',
+    emoji: '🔥',
+    logPath: '/home/openclaw/.openclaw/workspace/memecoins-trades.log',
+    serviceName: 'memecoin-trader'
+  },
+  {
+    id: 'tinkoff-trader',
+    name: 'Тинькофф Трейдер',
+    emoji: '🏦',
+    logPath: '/home/openclaw/.openclaw/workspace/tinkoff-trader.log',
+    serviceName: 'tinkoff-trader'
+  }
+];
+
+// Парсинг торговых логов
+function parseTradeLog(botConfig) {
+  try {
+    if (!fs.existsSync(botConfig.logPath)) {
+      return { exists: false };
+    }
+
+    const stat = fs.statSync(botConfig.logPath);
+    const content = fs.readFileSync(botConfig.logPath, 'utf8');
+    const lines = content.split('\n').filter(l => l.trim());
+
+    const result = {
+      exists: true,
+      sizeBytes: stat.size,
+      totalLines: lines.length,
+      lastModified: stat.mtime.toISOString(),
+      lastLine: lines.length > 0 ? lines[lines.length - 1] : '',
+      recentTrades: [],
+      balances: [],
+      activePositions: [],
+      totalBuys: 0,
+      totalSells: 0,
+      totalErrors: 0,
+      lastRunTime: null,
+      logExcerpt: lines.slice(-30).join('\n')
+    };
+
+    // Парсим только последние 1000 строк для производительности
+    const recentLines = lines.slice(-1000);
+
+    recentLines.forEach(line => {
+      if (line.includes('✅ Buy') || line.includes('✅ Купили') || line.includes('✅ Куплено')) {
+        result.totalBuys++;
+        const match = line.match(/Buy\s+([\d.]+)\s+(\w+)/);
+        if (match) {
+          result.recentTrades.push({ type: 'buy', symbol: match[2], qty: parseFloat(match[1]), time: line.substring(0, 23), raw: line });
+        }
+      }
+
+      if (line.includes('✅ Sell') || line.includes('✅ Продали')) {
+        result.totalSells++;
+        const match = line.match(/Sell\s+([\d.]+)\s+(\w+)/);
+        if (match) {
+          result.recentTrades.push({ type: 'sell', symbol: match[2], qty: parseFloat(match[1]), time: line.substring(0, 23), raw: line });
+        }
+      }
+
+      if (line.includes('ERROR') || line.includes('❌')) {
+        result.totalErrors++;
+      }
+
+      const balMatch = line.match(/USDT[^\d]*([\d.]+)/);
+      if (balMatch && !result.balances.some(b => b.time === line.substring(0, 23) && Math.abs(b.amount - parseFloat(balMatch[1])) < 0.01)) {
+        result.balances.push({ time: line.substring(0, 23), amount: parseFloat(balMatch[1]) });
+      }
+
+      if (line.includes('Уже держим') || line.includes('✅ Держим')) {
+        const posMatch = line.match(/держим\s+([\d.]+)\s+(\w+)/);
+        if (posMatch && !result.activePositions.some(p => p.symbol === posMatch[2])) {
+          result.activePositions.push({ symbol: posMatch[2], qty: parseFloat(posMatch[1]), time: line.substring(0, 23) });
+        }
+      }
+
+      const priceMatch = line.match(/(\w+USDT):\s*\$([\d.]+),\s*dd=([-\d.]+)%/);
+      if (priceMatch) {
+        const existing = result.activePositions.find(p => p.symbol === priceMatch[1]);
+        if (existing) {
+          existing.price = parseFloat(priceMatch[2]);
+          existing.drawdown = parseFloat(priceMatch[3]);
+        } else {
+          result.activePositions.push({ symbol: priceMatch[1], price: parseFloat(priceMatch[2]), drawdown: parseFloat(priceMatch[3]), time: line.substring(0, 23) });
+        }
+      }
+
+      if (line.includes('SCALP') || line.includes('MEAN REVERSION') || line.includes('MEMECOIN TRADER') || line.includes('Тинькофф Трейдер')) {
+        result.lastRunTime = line.substring(0, 23);
+      }
+
+      const итогоMatch = line.match(/ИТОГО:\s*(\d+)/);
+      if (итогоMatch) result.totalTradesThisRun = parseInt(итогоMatch[1]);
+    });
+
+    result.recentTrades = result.recentTrades.slice(-20).reverse();
+    result.balances = result.balances.slice(-10);
+
+    if (botConfig.jsonPath && fs.existsSync(botConfig.jsonPath)) {
+      try {
+        const jsonContent = fs.readFileSync(botConfig.jsonPath, 'utf8');
+        const tradeEntries = jsonContent.split('\n').filter(l => l.trim()).map(l => { try { return JSON.parse(l); } catch(e) { return null; } }).filter(Boolean);
+        result.jsonTrades = tradeEntries.slice(-10);
+        result.totalJsonTrades = tradeEntries.length;
+      } catch (e) { result.jsonParseError = e.message; }
+    }
+
+    return result;
+  } catch (err) {
+    return { exists: false, error: err.message };
+  }
+}
+
+// API: Получить мониторинг торговли
+app.get('/api/trading/monitor', function(req, res) {
+  try {
+    var bots = TRADING_BOTS.map(function(bot) {
+      var data = parseTradeLog(bot);
+      var serviceStatus = 'unknown';
+      var isActive = false;
+      try {
+        var out = execSync('systemctl is-active ' + bot.serviceName + ' 2>/dev/null || echo unknown', { timeout: 3000, encoding: 'utf8' }).toString().trim();
+        isActive = out === 'active';
+        serviceStatus = out;
+      } catch (e) {}
+
+      var secondsSinceUpdate = null;
+      if (data.exists && data.lastModified) {
+        secondsSinceUpdate = Math.floor((Date.now() - new Date(data.lastModified).getTime()) / 1000);
+      }
+
+      return {
+        id: bot.id,
+        name: bot.name,
+        emoji: bot.emoji,
+        serviceName: bot.serviceName,
+        serviceStatus: serviceStatus,
+        isActive: isActive,
+        secondsSinceUpdate: secondsSinceUpdate,
+        exists: data.exists,
+        sizeBytes: data.sizeBytes,
+        totalLines: data.totalLines,
+        lastModified: data.lastModified,
+        lastLine: data.lastLine,
+        recentTrades: data.recentTrades || [],
+        balances: data.balances || [],
+        activePositions: data.activePositions || [],
+        totalBuys: data.totalBuys || 0,
+        totalSells: data.totalSells || 0,
+        totalErrors: data.totalErrors || 0,
+        lastRunTime: data.lastRunTime,
+        logExcerpt: data.logExcerpt || '',
+        totalTradesThisRun: data.totalTradesThisRun,
+        jsonTrades: data.jsonTrades || [],
+        totalJsonTrades: data.totalJsonTrades || 0
+      };
+    });
+
+    var summary = {
+      totalBots: bots.length,
+      activeBots: bots.filter(function(b) { return b.isActive; }).length,
+      totalBuys: bots.reduce(function(s, b) { return s + (b.totalBuys || 0); }, 0),
+      totalSells: bots.reduce(function(s, b) { return s + (b.totalSells || 0); }, 0),
+      totalErrors: bots.reduce(function(s, b) { return s + (b.totalErrors || 0); }, 0),
+      activePositions: bots.reduce(function(s, b) { return s + (b.activePositions ? b.activePositions.length : 0); }, 0)
+    };
+
+    res.json({ success: true, timestamp: new Date().toISOString(), summary: summary, bots: bots });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // API endpoint для получения логов сервиса
 app.get('/api/services/:name/logs', (req, res) => {
   try {
