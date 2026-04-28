@@ -1120,6 +1120,131 @@ app.get('/api/trading/monitor', function(req, res) {
   }
 });
 
+// ============================================================
+// SESSIONS EXPLORER — чтение сессий OpenClaw напрямую
+// ============================================================
+
+// API: Получить все сессии OpenClaw из sessions.json
+app.get('/api/sessions', (req, res) => {
+  try {
+    const sessionsFile = '/home/openclaw/.openclaw/agents/main/sessions/sessions.json';
+    
+    if (!fs.existsSync(sessionsFile)) {
+      return res.json({ success: true, sessions: [], total: 0, message: 'Sessions file not found' });
+    }
+    
+    const content = fs.readFileSync(sessionsFile, 'utf8');
+    const sessionsData = JSON.parse(content);
+    
+    const sessionKeys = Object.keys(sessionsData);
+    const sessions = sessionKeys.map(key => {
+      const s = sessionsData[key];
+      const parts = key.split(':');
+      const agentId = parts[1] || 'main';
+      const sessionType = parts[2] || 'direct';
+      
+      const updatedAt = s.updatedAt || 0;
+      const ageMs = Date.now() - updatedAt;
+      const ageMinutes = Math.floor(ageMs / 60000);
+      const ageHours = Math.floor(ageMs / 3600000);
+      
+      let ageDisplay = '< 1 мин';
+      if (ageMinutes >= 60) {
+        ageDisplay = ageHours + 'ч ' + (ageMinutes % 60) + 'м';
+      } else if (ageMinutes > 0) {
+        ageDisplay = ageMinutes + ' мин';
+      }
+      
+      // Session status
+      let status = s.status || 'unknown';
+      let statusDisplay = status;
+      if (status === 'running') statusDisplay = '▶ Running';
+      else if (status === 'done') statusDisplay = '✓ Done';
+      else if (status === 'timeout') statusDisplay = '⏰ Timeout';
+      
+      // Channel detection
+      let channel = s.lastChannel || s.deliveryContext?.channel || '?';
+      let channelEmoji = channel === 'telegram' ? '📱' : channel === 'webchat' ? '🌐' : channel === 'discord' ? '💬' : channel === 'cron' ? '⏰' : '❓';
+      
+      // Last message summary
+      const messages = s.messages || [];
+      const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+      let lastMessagePreview = '';
+      if (lastMsg) {
+        const role = lastMsg.role || '?';
+        const content_preview = lastMsg.content ? String(lastMsg.content).substring(0, 80) : '';
+        lastMessagePreview = role + ': ' + content_preview;
+      }
+      
+      return {
+        key,
+        sessionId: s.sessionId || '',
+        agentId,
+        type: sessionType,
+        status,
+        statusDisplay,
+        updatedAt: updatedAt,
+        updatedAtISO: new Date(updatedAt).toISOString(),
+        updatedAtDisplay: new Date(updatedAt).toLocaleString(),
+        ageMs,
+        ageMinutes,
+        ageDisplay,
+        model: s.model || '?',
+        inputTokens: s.inputTokens || 0,
+        outputTokens: s.outputTokens || 0,
+        totalTokens: (s.inputTokens || 0) + (s.outputTokens || 0),
+        contextTokens: s.contextTokens || 0,
+        channel,
+        channelEmoji,
+        messageCount: messages.length,
+        lastMessagePreview,
+        aborted: s.abortedLastRun || false,
+        originProvider: s.origin?.provider || '?',
+        cronId: s.cronId || null,
+        sessionFile: s.sessionFile || ''
+      };
+    });
+    
+    // Sort: running first, then by updatedAt descending
+    const statusOrder = { 'running': 0, 'done': 1, 'timeout': 2 };
+    sessions.sort((a, b) => {
+      const orderA = statusOrder[a.status] ?? 99;
+      const orderB = statusOrder[b.status] ?? 99;
+      if (orderA !== orderB) return orderA - orderB;
+      return b.updatedAt - a.updatedAt;
+    });
+    
+    // Compute summary stats
+    const running = sessions.filter(s => s.status === 'running').length;
+    const done = sessions.filter(s => s.status === 'done').length;
+    const timeout = sessions.filter(s => s.status === 'timeout').length;
+    const totalTokens = sessions.reduce((sum, s) => sum + s.totalTokens, 0);
+    const totalCost = sessions.reduce((sum, s) => {
+      const model = (s.model || '').toLowerCase();
+      const pricing = MODEL_PRICING[model] || MODEL_PRICING['unknown'];
+      return sum + (s.inputTokens / 1000) * pricing.input + (s.outputTokens / 1000) * pricing.output;
+    }, 0);
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      total: sessions.length,
+      summary: {
+        running,
+        done,
+        timeout,
+        totalTokens,
+        totalCost: parseFloat(totalCost.toFixed(6)),
+        models: [...new Set(sessions.map(s => s.model).filter(Boolean))]
+      },
+      sessions
+    });
+  } catch (err) {
+    console.error('Error in /api/sessions:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // API endpoint для получения логов сервиса
 app.get('/api/services/:name/logs', (req, res) => {
   try {

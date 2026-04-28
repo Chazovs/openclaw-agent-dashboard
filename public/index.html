@@ -833,8 +833,230 @@
                 color: #f05454;
                 text-align: center;
             }
+            
+            /* Sessions Explorer */
+            .sessions-summary-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 12px;
+                margin-bottom: 20px;
+            }
+            .sessions-stat-card {
+                background: #1a1a2e;
+                border-radius: 8px;
+                padding: 15px;
+                text-align: center;
+                border: 1px solid #0f3460;
+                transition: all 0.2s;
+            }
+            .sessions-stat-card:hover {
+                border-color: #7c5cfc;
+                transform: translateY(-2px);
+            }
+            .sessions-stat-card.highlight {
+                border-color: #7c5cfc;
+                background: linear-gradient(135deg, #1a1a2e 0%, #1e1a3e 100%);
+            }
+            .sessions-stat-value {
+                font-size: 1.8rem;
+                color: #7c5cfc;
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+            .sessions-stat-label {
+                color: #a9a9a9;
+                font-size: 0.78rem;
+            }
+            .sessions-filter-bar {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 15px;
+                flex-wrap: wrap;
+            }
+            .sessions-filter-btn {
+                padding: 6px 14px;
+                background: #1a1a2e;
+                border: 1px solid #0f3460;
+                color: #a9a9a9;
+                border-radius: 15px;
+                cursor: pointer;
+                font-family: 'Courier New', monospace;
+                font-size: 0.78rem;
+                transition: all 0.2s;
+            }
+            .sessions-filter-btn:hover {
+                border-color: #7c5cfc;
+                color: #e6e6e6;
+            }
+            .sessions-filter-btn.active {
+                background: rgba(124, 92, 252, 0.2);
+                border-color: #7c5cfc;
+                color: #7c5cfc;
+            }
+            .sessions-list {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                max-height: 600px;
+                overflow-y: auto;
+            }
+            .session-card {
+                background: #1a1a2e;
+                border-radius: 8px;
+                padding: 10px 14px;
+                border: 1px solid #0f3460;
+                border-left: 4px solid #0f3460;
+                transition: all 0.2s;
+                cursor: pointer;
+            }
+            .session-card:hover {
+                border-color: #7c5cfc;
+                background: #1e1a2e;
+            }
+            .session-card.running {
+                border-left-color: #2ed573;
+                background: linear-gradient(90deg, rgba(46, 213, 115, 0.05) 0%, #1a1a2e 20%);
+            }
+            .session-card.timeout {
+                border-left-color: #f05454;
+            }
+            .session-card.done {
+                border-left-color: #4cc9f0;
+            }
+            .session-card-header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 4px;
+            }
+            .session-status-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+            .session-status-dot.running { background: #2ed573; box-shadow: 0 0 8px #2ed573; animation: pulse-session 2s infinite; }
+            .session-status-dot.done { background: #4cc9f0; }
+            .session-status-dot.timeout { background: #f05454; }
+            .session-status-dot.unknown { background: #a9a9a9; }
+            @keyframes pulse-session {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+            .session-channel-badge {
+                font-size: 0.85rem;
+                line-height: 1;
+            }
+            .session-name {
+                color: #e6e6e6;
+                font-weight: bold;
+                font-size: 0.85rem;
+                flex: 1;
+            }
+            .session-model-tag {
+                background: rgba(124, 92, 252, 0.15);
+                color: #7c5cfc;
+                font-size: 0.65rem;
+                padding: 2px 8px;
+                border-radius: 8px;
+                border: 1px solid rgba(124, 92, 252, 0.3);
+                white-space: nowrap;
+            }
+            .session-age-tag {
+                color: #a9a9a9;
+                font-size: 0.7rem;
+                white-space: nowrap;
+            }
+            .session-details {
+                display: none;
+                margin-top: 8px;
+                padding-top: 8px;
+                border-top: 1px solid #0f3460;
+            }
+            .session-details.active {
+                display: block;
+            }
+            .session-detail-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 4px;
+                font-size: 0.78rem;
+            }
+            .session-detail-label {
+                color: #a9a9a9;
+                flex-shrink: 0;
+            }
+            .session-detail-value {
+                color: #e6e6e6;
+                font-family: monospace;
+                font-size: 0.75rem;
+                text-align: right;
+                word-break: break-all;
+                max-width: 60%;
+            }
+            .session-key-display {
+                background: #0f3460;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 0.7rem;
+                font-family: monospace;
+                color: #4cc9f0;
+                word-break: break-all;
+                margin-bottom: 6px;
+            }
+            .session-tokens-bar {
+                margin: 8px 0;
+            }
+            .session-tokens-bar-label {
+                display: flex;
+                justify-content: space-between;
+                color: #a9a9a9;
+                font-size: 0.72rem;
+                margin-bottom: 3px;
+            }
+            .session-tokens-track {
+                height: 6px;
+                background: #0f3460;
+                border-radius: 3px;
+                overflow: hidden;
+                display: flex;
+            }
+            .session-tokens-fill-input {
+                height: 100%;
+                background: #7c5cfc;
+                transition: width 0.3s;
+            }
+            .session-tokens-fill-output {
+                height: 100%;
+                background: #f0a04c;
+                transition: width 0.3s;
+            }
+            .session-empty-state {
+                text-align: center;
+                padding: 30px;
+                color: #a9a9a9;
+                font-style: italic;
+            }
         </style>
 
+        <!-- Sessions Explorer Panel -->
+        <div class="health-panel" id="sessions-panel">
+            <div class="health-header" onclick="toggleSessionsPanel()">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="sessions-icon" style="font-size: 1.5rem;">🔌</span>
+                    <h3 style="color: #7c5cfc; margin: 0;">OpenClaw Sessions Explorer</h3>
+                    <span id="sessions-badge" class="health-badge" style="background: rgba(124, 92, 252, 0.2); color: #7c5cfc; border: 1px solid #7c5cfc;">Загрузка...</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span id="sessions-summary" style="color: #a9a9a9; font-size: 0.85rem;"></span>
+                    <span id="sessions-toggle-icon" style="color: #7c5cfc; font-size: 1.2rem;">▼</span>
+                </div>
+            </div>
+            <div class="health-body" id="sessions-body">
+                <div class="loading" style="grid-column: 1 / -1;">Нажмите чтобы раскрыть 🔌</div>
+            </div>
+        </div>
+        
         <!-- Services & Cron Panel -->
         <div class="health-panel" id="services-panel">
             <div class="health-header" onclick="toggleServicesPanel()">
@@ -1883,6 +2105,211 @@
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
+        }
+        
+        // ========== Sessions Explorer Panel ==========
+        let sessionsPanelOpen = false;
+        let sessionsRefreshInterval = null;
+        let allSessionsData = [];
+        let sessionsFilter = 'all';
+        
+        function toggleSessionsPanel() {
+            const body = document.getElementById('sessions-body');
+            const icon = document.getElementById('sessions-toggle-icon');
+            sessionsPanelOpen = !sessionsPanelOpen;
+            body.classList.toggle('active', sessionsPanelOpen);
+            icon.textContent = sessionsPanelOpen ? '▲' : '▼';
+            
+            if (sessionsPanelOpen) {
+                loadSessionsPanel();
+                if (sessionsRefreshInterval) clearInterval(sessionsRefreshInterval);
+                sessionsRefreshInterval = setInterval(loadSessionsPanel, 15000);
+            } else {
+                if (sessionsRefreshInterval) {
+                    clearInterval(sessionsRefreshInterval);
+                    sessionsRefreshInterval = null;
+                }
+            }
+        }
+        
+        function getSessionTypeLabel(type) {
+            const map = {
+                'main': '🧠 Main',
+                'telegram': '📱 Telegram',
+                'cron': '⏰ Cron',
+                'subagent': '🔄 SubAgent',
+                'discord': '💬 Discord',
+                'webchat': '🌐 WebChat',
+                'direct': '📨 Direct'
+            };
+            return map[type] || ('❓ ' + type);
+        }
+        
+        async function loadSessionsPanel() {
+            const body = document.getElementById('sessions-body');
+            const badge = document.getElementById('sessions-badge');
+            const summary = document.getElementById('sessions-summary');
+            
+            try {
+                const response = await fetch('/api/sessions');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                
+                if (!data.success) throw new Error(data.error || 'Invalid response');
+                
+                allSessionsData = data.sessions || [];
+                const summaryData = data.summary || {};
+                
+                badge.textContent = data.total + ' сессий';
+                summary.textContent = summaryData.running > 0 
+                    ? '▶ ' + summaryData.running + ' активны' 
+                    : data.total + ' всего';
+                
+                renderSessionsPanel(body);
+                
+            } catch (err) {
+                body.innerHTML = '<div class="error" style="grid-column: 1 / -1;">❌ Ошибка: ' + escapeHtml(err.message) + '</div>';
+                badge.textContent = 'Ошибка';
+            }
+        }
+        
+        function setSessionsFilter(filter) {
+            sessionsFilter = filter;
+            // Update filter button states
+            document.querySelectorAll('.sessions-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            renderSessionsPanel(document.getElementById('sessions-body'));
+        }
+        
+        function renderSessionsPanel(container) {
+            const data = allSessionsData;
+            
+            // Filter
+            let filtered = data;
+            if (sessionsFilter === 'running') filtered = data.filter(s => s.status === 'running');
+            else if (sessionsFilter === 'recent') {
+                const oneHourAgo = Date.now() - 3600000;
+                filtered = data.filter(s => s.updatedAt >= oneHourAgo);
+            }
+            else if (sessionsFilter === 'today') {
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                filtered = data.filter(s => s.updatedAt >= today.getTime());
+            }
+            
+            const running = data.filter(s => s.status === 'running').length;
+            const recentHour = data.filter(s => s.updatedAt >= Date.now() - 3600000).length;
+            const todayCount = data.filter(s => {
+                const t = new Date(); t.setHours(0,0,0,0);
+                return s.updatedAt >= t.getTime();
+            }).length;
+            const totalTokens = data.reduce((sum, s) => sum + s.totalTokens, 0);
+            const totalCost = data.reduce((sum, s) => {
+                const model = (s.model || '').toLowerCase();
+                const prices = {
+                    'deepseek-chat': {in: 0.00027, out: 0.0011},
+                    'deepseek-reasoner': {in: 0.00055, out: 0.00219}
+                };
+                const p = prices[model] || prices['deepseek-chat'];
+                return sum + (s.inputTokens / 1000) * p.in + (s.outputTokens / 1000) * p.out;
+            }, 0);
+            const models = [...new Set(data.map(s => s.model).filter(Boolean))];
+            
+            let html = '';
+            
+            // Summary cards
+            html += '<div class="sessions-summary-grid">';
+            html += '<div class="sessions-stat-card highlight"><div class="sessions-stat-value">' + data.length + '</div><div class="sessions-stat-label">Всего сессий</div></div>';
+            html += '<div class="sessions-stat-card' + (running > 0 ? '' : '') + '"><div class="sessions-stat-value" style="color: ' + (running > 0 ? '#2ed573' : '#a9a9a9') + ';">' + running + '</div><div class="sessions-stat-label">▶ Активных</div></div>';
+            html += '<div class="sessions-stat-card"><div class="sessions-stat-value" style="color: #7c5cfc;">' + totalTokens.toLocaleString() + '</div><div class="sessions-stat-label">Всего токенов</div></div>';
+            html += '<div class="sessions-stat-card"><div class="sessions-stat-value" style="color: #f0a04c;">$' + totalCost.toFixed(4) + '</div><div class="sessions-stat-label">Оценка стоимости</div></div>';
+            html += '<div class="sessions-stat-card"><div class="sessions-stat-value" style="color: #4cc9f0; font-size: 1.2rem;">' + models.slice(0, 3).join(', ') + (models.length > 3 ? ' +' + (models.length-3) : '') + '</div><div class="sessions-stat-label">Модели</div></div>';
+            html += '</div>';
+            
+            // Filter bar
+            html += '<div class="sessions-filter-bar">';
+            html += '<button class="sessions-filter-btn' + (sessionsFilter === 'all' ? ' active' : '') + '" data-filter="all" onclick="setSessionsFilter(\'all\')">📋 Все (' + data.length + ')</button>';
+            html += '<button class="sessions-filter-btn' + (sessionsFilter === 'running' ? ' active' : '') + '" data-filter="running" onclick="setSessionsFilter(\'running\')">▶ Running (' + running + ')</button>';
+            html += '<button class="sessions-filter-btn' + (sessionsFilter === 'recent' ? ' active' : '') + '" data-filter="recent" onclick="setSessionsFilter(\'recent\')">🕐 Последний час (' + recentHour + ')</button>';
+            html += '<button class="sessions-filter-btn' + (sessionsFilter === 'today' ? ' active' : '') + '" data-filter="today" onclick="setSessionsFilter(\'today\')">📅 Сегодня (' + todayCount + ')</button>';
+            html += '</div>';
+            
+            // Sessions list
+            if (filtered.length === 0) {
+                html += '<div class="session-empty-state">🔌 Нет сессий для отображения</div>';
+                container.innerHTML = html;
+                return;
+            }
+            
+            html += '<div class="sessions-list">';
+            
+            filtered.forEach(s => {
+                const statusDotClass = s.status === 'running' ? 'running' : s.status === 'done' ? 'done' : s.status === 'timeout' ? 'timeout' : 'unknown';
+                const cardClass = s.status === 'running' ? 'running' : s.status === 'timeout' ? 'timeout' : 'done';
+                const sessionLabel = getSessionTypeLabel(s.type);
+                
+                // Token bar
+                const totalTok = s.totalTokens || 1;
+                const inputPct = Math.min((s.inputTokens / totalTok) * 100, 100);
+                const outputPct = Math.min((s.outputTokens / totalTok) * 100, 100);
+                
+                html += '<div class="session-card ' + cardClass + '" onclick="toggleSessionDetails(\'' + escapeHtml(s.key) + '\')">';
+                html += '<div class="session-card-header">';
+                html += '<div class="session-status-dot ' + statusDotClass + '"></div>';
+                html += '<span class="session-channel-badge">' + s.channelEmoji + '</span>';
+                html += '<span class="session-name">' + sessionLabel + '</span>';
+                html += '<span class="session-model-tag">' + escapeHtml(s.model) + '</span>';
+                html += '<span class="session-age-tag">' + escapeHtml(s.ageDisplay) + '</span>';
+                html += '</div>';
+                
+                // Details (hidden)
+                html += '<div class="session-details" id="sess-details-' + escapeHtml(s.key).replace(/:/g, '_') + '">';
+                html += '<div class="session-key-display">' + escapeHtml(s.key) + '</div>';
+                
+                // Token bar
+                html += '<div class="session-tokens-bar">';
+                html += '<div class="session-tokens-bar-label">';
+                html += '<span>Токены: ' + s.totalTokens.toLocaleString() + '</span>';
+                html += '<span>input: ' + s.inputTokens.toLocaleString() + ' / output: ' + s.outputTokens.toLocaleString() + '</span>';
+                html += '</div>';
+                html += '<div class="session-tokens-track">';
+                html += '<div class="session-tokens-fill-input" style="width: ' + inputPct + '%"></div>';
+                html += '<div class="session-tokens-fill-output" style="width: ' + outputPct + '%"></div>';
+                html += '</div>';
+                html += '</div>';
+                
+                html += '<div class="session-detail-row"><span class="session-detail-label">Status:</span><span class="session-detail-value">' + escapeHtml(s.statusDisplay) + (s.aborted ? ' (aborted)' : '') + '</span></div>';
+                html += '<div class="session-detail-row"><span class="session-detail-label">Updated:</span><span class="session-detail-value">' + escapeHtml(s.updatedAtDisplay) + '</span></div>';
+                html += '<div class="session-detail-row"><span class="session-detail-label">Session ID:</span><span class="session-detail-value" style="font-size:0.7rem;">' + escapeHtml(s.sessionId || 'N/A') + '</span></div>';
+                html += '<div class="session-detail-row"><span class="session-detail-label">Channel:</span><span class="session-detail-value">' + escapeHtml(s.channel) + '</span></div>';
+                html += '<div class="session-detail-row"><span class="session-detail-label">Provider:</span><span class="session-detail-value">' + escapeHtml(s.originProvider) + '</span></div>';
+                if (s.contextTokens > 0) {
+                    html += '<div class="session-detail-row"><span class="session-detail-label">Context:</span><span class="session-detail-value">' + s.contextTokens.toLocaleString() + ' tokens</span></div>';
+                }
+                if (s.messageCount > 0 && s.lastMessagePreview) {
+                    html += '<div class="session-detail-row" style="flex-wrap: wrap;"><span class="session-detail-label">Last msg:</span><span class="session-detail-value" style="max-width: 70%; font-size:0.72rem;">' + escapeHtml(s.lastMessagePreview) + '</span></div>';
+                }
+                
+                html += '</div>';
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            
+            // Timestamp & refresh button
+            html += '<div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">';
+            html += '<span style="color: #555; font-size: 0.75rem;">Автообновление каждые 15с</span>';
+            html += '<button onclick="loadSessionsPanel()" class="filter-button" style="padding: 4px 12px; font-size:0.78rem;">🔄 Обновить</button>';
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+        
+        function toggleSessionDetails(sessionKey) {
+            const escaped = escapeHtml(sessionKey).replace(/:/g, '_');
+            const details = document.getElementById('sess-details-' + escaped);
+            if (details) details.classList.toggle('active');
         }
         
         // Start dashboard when page loads
