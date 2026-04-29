@@ -7,6 +7,7 @@ const AnalyticsEngine = require('./analytics-engine');
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const TradingOverview = require('./trading-overview');
 
 const app = express();
 const server = http.createServer(app);
@@ -1291,6 +1292,22 @@ app.get('/api/services/:name/logs', (req, res) => {
       lines: logContent ? logContent.split('\n').length : 0,
       log: logContent
     });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================
+// TRADING OVERVIEW — consolidated trading performance panel
+// ============================================================
+
+const tradingOverview = new TradingOverview();
+
+// API: Получить сводку по торговле (PnL, позиции, рынок, аудит)
+app.get('/api/trading/overview', async function(req, res) {
+  try {
+    const data = await tradingOverview.getOverview();
+    res.json(data);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
