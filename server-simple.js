@@ -8,6 +8,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const TradingOverview = require('./trading-overview');
+const AlertManager = require('./alert-manager');
 
 const app = express();
 const server = http.createServer(app);
@@ -26,6 +27,9 @@ const activityStore = new ActivityStore();
 
 // Инициализация движка аналитики
 const analyticsEngine = new AnalyticsEngine();
+
+// Инициализация менеджера оповещений
+const alertManager = new AlertManager();
 
 // Функция для получения реальных агентов из OpenClaw
 function getRealAgentsFromOpenClaw() {
@@ -1308,6 +1312,154 @@ app.get('/api/trading/overview', async function(req, res) {
   try {
     const data = await tradingOverview.getOverview();
     res.json(data);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================
+// ALERT MANAGER API — unified alert & notification center
+// ============================================================
+
+// API: Получить все оповещения
+app.get('/api/alerts', (req, res) => {
+  try {
+    const options = {
+      minSeverity: req.query.minSeverity !== undefined ? parseInt(req.query.minSeverity) : undefined,
+      maxSeverity: req.query.maxSeverity !== undefined ? parseInt(req.query.maxSeverity) : undefined,
+      source: req.query.source || undefined,
+      acknowledged: req.query.acknowledged !== undefined ? req.query.acknowledged === 'true' : undefined,
+      since: req.query.since ? parseInt(req.query.since) : undefined,
+      until: req.query.until ? parseInt(req.query.until) : undefined,
+      limit: req.query.limit ? parseInt(req.query.limit) : 100
+    };
+    
+    const alerts = alertManager.getAlerts(options);
+    const summary = alertManager.getSummary();
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      count: alerts.length,
+      summary,
+      alerts
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Получить сводку по оповещениям
+app.get('/api/alerts/summary', (req, res) => {
+  try {
+    const summary = alertManager.getSummary();
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      summary
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Подтвердить оповещение
+app.post('/api/alerts/:id/acknowledge', (req, res) => {
+  try {
+    const result = alertManager.acknowledgeAlert(req.params.id);
+    res.json({
+      success: result,
+      message: result ? 'Alert acknowledged' : 'Alert not found'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Подтвердить все оповещения
+app.post('/api/alerts/acknowledge-all', express.json(), (req, res) => {
+  try {
+    const source = req.body ? req.body.source : undefined;
+    const count = alertManager.acknowledgeAll(source);
+    res.json({
+      success: true,
+      acknowledgedCount: count,
+      message: `${count} alerts acknowledged`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Сканировать систему и создать оповещения на основе текущего состояния
+app.post('/api/alerts/scan', async (req, res) => {
+  try {
+    // Собираем данные системы
+    const os = require('os');
+    
+    // CPU
+    const cpus = os.cpus();
+    const cpuCores = cpus.length;
+    const loadAvg = os.loadavg();
+    
+    // Memory
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const memPercent = Math.round((usedMem / totalMem) * 100);
+    
+    // Disk
+    let diskUsagePercent = 0;
+    try {
+      const dfOutput = execSync('df -B1 / | tail -1', { timeout: 3000 }).toString().trim().split(/\s+/);
+      if (dfOutput.length >= 4) {
+        const used = parseInt(dfOutput[2]) || 0;
+        const total = parseInt(dfOutput[1]) || 1;
+        diskUsagePercent = Math.round((used / total) * 100);
+      }
+    } catch (e) {}
+    
+    const cpuLoadPercent = Math.round((loadAvg[0] / cpuCores) * 100);
+    
+    // Health score
+    const healthScore = Math.max(0, Math.min(100, Math.round(
+      100 - (loadAvg[0] / cpuCores * 30) - (memPercent * 0.3) - (diskUsagePercent * 0.2)
+    )));
+    
+    const healthData = {
+      health: { score: healthScore, status: healthScore < 40 ? 'critical' : healthScore < 60 ? 'warning' : healthScore < 80 ? 'fair' : 'healthy' },
+      cpu: { loadPercent: cpuLoadPercent, cores: cpuCores, loadAvg1: loadAvg[0] },
+      memory: { usagePercent: memPercent, used: usedMem, total: totalMem },
+      disk: { usagePercent: diskUsagePercent }
+    };
+    
+    // Services (simplified from own data)
+    const servicesData = { services: [] };
+    try {
+      const svcResp = JSON.parse(fs.readFileSync('/dev/stdin', 'utf8'));
+    } catch (e) {}
+    
+    // Generate alerts
+    const newAlerts = alertManager.generateSystemAlerts(healthData, null, null);
+    const results = alertManager.addAlerts(newAlerts);
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      generated: results.length,
+      healthScore,
+      alerts: results
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Удалить все оповещения
+app.delete('/api/alerts', (req, res) => {
+  try {
+    alertManager.clearAll();
+    res.json({ success: true, message: 'All alerts cleared' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

@@ -1265,8 +1265,172 @@
                 color: #a9a9a9;
                 font-style: italic;
             }
+            
+            /* Alert Panel Styles */
+            .alert-filters {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 12px;
+                flex-wrap: wrap;
+            }
+            .alert-filter-btn {
+                background: #1a1a2e;
+                border: 1px solid #0f3460;
+                color: #a9a9a9;
+                padding: 4px 12px;
+                border-radius: 12px;
+                cursor: pointer;
+                font-family: inherit;
+                font-size: 0.78rem;
+                transition: all 0.2s;
+            }
+            .alert-filter-btn:hover {
+                border-color: #f05454;
+                color: #e6e6e6;
+            }
+            .alert-filter-btn.active {
+                background: rgba(240, 84, 84, 0.2);
+                border-color: #f05454;
+                color: #f05454;
+            }
+            .alert-list {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                max-height: 600px;
+                overflow-y: auto;
+            }
+            .alert-item {
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+                background: #1a1a2e;
+                border-radius: 8px;
+                padding: 10px 14px;
+                border-left: 4px solid #555;
+                transition: all 0.2s;
+                cursor: pointer;
+            }
+            .alert-item:hover {
+                border-color: #4cc9f0;
+                background: #1e1e3e;
+            }
+            .alert-item.level-critical { border-left-color: #f05454; background: rgba(240, 84, 84, 0.08); }
+            .alert-item.level-error { border-left-color: #ff4757; }
+            .alert-item.level-warning { border-left-color: #ffa502; }
+            .alert-item.level-info { border-left-color: #4cc9f0; }
+            .alert-item.acknowledged { opacity: 0.6; }
+            .alert-item.acknowledged .alert-emoji { filter: grayscale(0.5); }
+            .alert-icon {
+                font-size: 1.2rem;
+                width: 24px;
+                text-align: center;
+                flex-shrink: 0;
+                margin-top: 2px;
+            }
+            .alert-content {
+                flex: 1;
+                min-width: 0;
+            }
+            .alert-message {
+                color: #e6e6e6;
+                font-size: 0.85rem;
+                margin-bottom: 3px;
+                line-height: 1.3;
+            }
+            .alert-meta {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                font-size: 0.7rem;
+                color: #888;
+            }
+            .alert-source {
+                background: rgba(76, 201, 240, 0.1);
+                color: #4cc9f0;
+                padding: 1px 6px;
+                border-radius: 6px;
+                border: 1px solid rgba(76, 201, 240, 0.2);
+            }
+            .alert-timestamp {
+                color: #666;
+            }
+            .alert-count-badge {
+                background: rgba(255, 165, 2, 0.2);
+                color: #ffa502;
+                padding: 1px 6px;
+                border-radius: 8px;
+                font-size: 0.68rem;
+            }
+            .alert-empty {
+                text-align: center;
+                padding: 30px;
+                color: #666;
+                font-style: italic;
+            }
+            .alert-severity-label {
+                font-size: 0.62rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                padding: 1px 6px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            .alert-severity-label.lvl-0 { background: rgba(240, 84, 84, 0.25); color: #f05454; }
+            .alert-severity-label.lvl-1 { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+            .alert-severity-label.lvl-2 { background: rgba(255, 165, 2, 0.2); color: #ffa502; }
+            .alert-severity-label.lvl-3 { background: rgba(76, 201, 240, 0.15); color: #4cc9f0; }
+            .alert-refresh-btn {
+                background: #0f3460;
+                border: 1px solid #0f3460;
+                color: #4cc9f0;
+                padding: 3px 10px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-family: inherit;
+                font-size: 0.72rem;
+                transition: all 0.2s;
+            }
+            .alert-refresh-btn:hover {
+                border-color: #4cc9f0;
+                background: #16213e;
+            }
+            .alert-scan-btn {
+                background: rgba(240, 84, 84, 0.1);
+                border: 1px solid rgba(240, 84, 84, 0.3);
+                color: #f05454;
+                padding: 3px 10px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-family: inherit;
+                font-size: 0.72rem;
+                transition: all 0.2s;
+            }
+            .alert-scan-btn:hover {
+                background: rgba(240, 84, 84, 0.2);
+                border-color: #f05454;
+            }
         </style>
 
+        <!-- Alert & Notification Center -->
+        <div class="health-panel" id="alert-panel">
+            <div class="health-header" onclick="toggleAlertPanel()">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="alert-icon" style="font-size: 1.5rem;">🔔</span>
+                    <h3 style="color: #f05454; margin: 0;">Центр оповещений</h3>
+                    <span id="alert-badge" class="health-badge" style="background: rgba(240, 84, 84, 0.2); color: #f05454; border: 1px solid #f05454;">Загрузка...</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span id="alert-summary" style="color: #a9a9a9; font-size: 0.85rem;"></span>
+                    <button onclick="event.stopPropagation(); acknowledgeAllAlerts()" class="filter-button" style="padding: 2px 8px; font-size: 0.7rem; background: #0f3460;">✓ Все прочитано</button>
+                    <span id="alert-toggle-icon" style="color: #f05454; font-size: 1.2rem;">▼</span>
+                </div>
+            </div>
+            <div class="health-body" id="alert-body">
+                <div class="loading" style="grid-column: 1 / -1;">Загрузка оповещений...</div>
+            </div>
+        </div>
+        
         <!-- Sessions Explorer Panel -->
         <div class="health-panel" id="sessions-panel">
             <div class="health-header" onclick="toggleSessionsPanel()">
@@ -2098,6 +2262,9 @@
             
             // Update last update time
             updateLastUpdate();
+            
+            // Load alert badge silently
+            loadAlertBadge();
         }
         
         // ========== Services & Cron Panel ==========
@@ -2333,6 +2500,207 @@
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
+        }
+        
+        // ========== Alert & Notification Center ==========
+        let alertPanelOpen = false;
+        let alertRefreshInterval = null;
+        let alertFilterSeverity = 'all'; // 'all', 'critical', 'warning'
+        
+        function toggleAlertPanel() {
+            const body = document.getElementById('alert-body');
+            const icon = document.getElementById('alert-toggle-icon');
+            alertPanelOpen = !alertPanelOpen;
+            body.classList.toggle('active', alertPanelOpen);
+            icon.textContent = alertPanelOpen ? '▲' : '▼';
+            
+            if (alertPanelOpen) {
+                loadAlertPanel();
+                if (alertRefreshInterval) clearInterval(alertRefreshInterval);
+                alertRefreshInterval = setInterval(loadAlertPanel, 10000);
+            } else {
+                if (alertRefreshInterval) {
+                    clearInterval(alertRefreshInterval);
+                    alertRefreshInterval = null;
+                }
+            }
+        }
+        
+        async function loadAlertPanel() {
+            const body = document.getElementById('alert-body');
+            const badge = document.getElementById('alert-badge');
+            const summaryEl = document.getElementById('alert-summary');
+            
+            try {
+                const params = alertFilterSeverity === 'all' ? '?limit=100' : '?minSeverity=' + (alertFilterSeverity === 'critical' ? 1 : 2) + '&limit=100';
+                const resp = await fetch('/api/alerts' + params);
+                const data = await resp.json();
+                
+                if (!data.success) throw new Error(data.error || 'API error');
+                
+                const summary = data.summary;
+                const unacknowledged = summary.unacknowledgedBySeverity;
+                const totalUnack = unacknowledged.critical + unacknowledged.error + unacknowledged.warning + unacknowledged.info;
+                
+                // Update badge
+                if (totalUnack > 0) {
+                    badge.textContent = totalUnack + ' непрочитано';
+                    badge.style.background = 'rgba(240, 84, 84, 0.3)';
+                    badge.style.borderColor = '#f05454';
+                    badge.style.color = '#f05454';
+                } else {
+                    badge.textContent = 'Всё прочитано';
+                    badge.style.background = 'rgba(46, 213, 115, 0.2)';
+                    badge.style.borderColor = '#2ed573';
+                    badge.style.color = '#2ed573';
+                }
+                
+                // Update summary
+                const criticalStr = unacknowledged.critical > 0 ? '🔴' + unacknowledged.critical + ' ' : '';
+                const errorStr = unacknowledged.error > 0 ? '❌' + unacknowledged.error + ' ' : '';
+                const warnStr = unacknowledged.warning > 0 ? '⚠️' + unacknowledged.warning + ' ' : '';
+                const infoStr = unacknowledged.info > 0 ? '💡' + unacknowledged.info : '';
+                summaryEl.textContent = (criticalStr + errorStr + warnStr + infoStr).trim() || '✓ Всё чисто';
+                
+                // Render alerts
+                renderAlerts(body, data.alerts);
+                
+            } catch (err) {
+                console.error('Error loading alerts:', err);
+                body.innerHTML = '<div class="alert-empty">❌ Ошибка загрузки: ' + escapeHtml(err.message) + '</div>';
+                badge.textContent = 'Ошибка';
+            }
+        }
+        
+        function renderAlerts(container, alerts) {
+            var html = '';
+            
+            // Filter buttons
+            html += '<div class="alert-filters">';
+            html += '<button class="alert-filter-btn' + (alertFilterSeverity === 'all' ? ' active' : '') + '" onclick="setAlertFilter(\'all\')">🔔 Все</button>';
+            html += '<button class="alert-filter-btn' + (alertFilterSeverity === 'critical' ? ' active' : '') + '" onclick="setAlertFilter(\'critical\')">🔴 Критические</button>';
+            html += '<button class="alert-filter-btn' + (alertFilterSeverity === 'warning' ? ' active' : '') + '" onclick="setAlertFilter(\'warning\')">⚠️ Предупреждения</button>';
+            html += '<button class="alert-scan-btn" onclick="scanSystem()">🔍 Сканировать систему</button>';
+            html += '<button class="alert-refresh-btn" onclick="loadAlertPanel()">🔄</button>';
+            html += '</div>';
+            
+            if (alerts.length === 0) {
+                html += '<div class="alert-empty">✨ Нет оповещений. Система работает штатно.</div>';
+                container.innerHTML = html;
+                return;
+            }
+            
+            html += '<div class="alert-list">';
+            
+            for (var i = 0; i < alerts.length; i++) {
+                var a = alerts[i];
+                var levelClass = 'level-' + a.severityLabel.toLowerCase();
+                var ackClass = a.acknowledged ? ' acknowledged' : '';
+                var time = new Date(a.timestamp).toLocaleTimeString();
+                var date = new Date(a.timestamp).toLocaleDateString();
+                
+                html += '<div class="alert-item ' + levelClass + ackClass + '" onclick="acknowledgeAlert(\'' + a.id + '\')">';
+                html += '<div class="alert-icon">' + a.emoji + '</div>';
+                html += '<div class="alert-content">';
+                html += '<div class="alert-message">' + escapeHtml(a.message) + '</div>';
+                html += '<div class="alert-meta">';
+                html += '<span class="alert-source">' + escapeHtml(a.source) + '</span>';
+                html += '<span class="alert-severity-label lvl-' + a.severity + '">' + escapeHtml(a.severityLabel) + '</span>';
+                html += '<span class="alert-timestamp">' + date + ' ' + time + '</span>';
+                if (a.count > 1) {
+                    html += '<span class="alert-count-badge">×' + a.count + '</span>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        function setAlertFilter(severity) {
+            alertFilterSeverity = severity;
+            loadAlertPanel();
+        }
+        
+        async function acknowledgeAlert(alertId) {
+            try {
+                const resp = await fetch('/api/alerts/' + alertId + '/acknowledge', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    loadAlertPanel();
+                }
+            } catch (err) {
+                console.error('Error acknowledging alert:', err);
+            }
+        }
+        
+        async function acknowledgeAllAlerts() {
+            try {
+                const resp = await fetch('/api/alerts/acknowledge-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    if (data.acknowledgedCount > 0) {
+                        showAlertSummary('Отмечено ' + data.acknowledgedCount + ' оповещений как прочитанные');
+                    }
+                    loadAlertPanel();
+                }
+            } catch (err) {
+                console.error('Error acknowledging all alerts:', err);
+            }
+        }
+        
+        async function scanSystem() {
+            try {
+                const resp = await fetch('/api/alerts/scan', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    loadAlertPanel();
+                }
+            } catch (err) {
+                console.error('Error scanning system:', err);
+            }
+        }
+        
+        function showAlertSummary(msg) {
+            const el = document.getElementById('success-message');
+            if (el) {
+                el.textContent = msg;
+                el.style.display = 'block';
+                setTimeout(function() { el.style.display = 'none'; }, 3000);
+            }
+        }
+        
+        // Load alerts on startup (silently, badge only)
+        async function loadAlertBadge() {
+            try {
+                const resp = await fetch('/api/alerts/summary');
+                const data = await resp.json();
+                if (!data.success) return;
+                const s = data.summary;
+                const totalUnack = s.unacknowledgedBySeverity.critical + s.unacknowledgedBySeverity.error + 
+                                  s.unacknowledgedBySeverity.warning + s.unacknowledgedBySeverity.info;
+                const badge = document.getElementById('alert-badge');
+                if (badge) {
+                    if (totalUnack > 0) {
+                        badge.textContent = totalUnack + ' непрочитано';
+                        badge.style.background = 'rgba(240, 84, 84, 0.3)';
+                        badge.style.borderColor = '#f05454';
+                        badge.style.color = '#f05454';
+                    } else {
+                        badge.textContent = 'Всё прочитано';
+                        badge.style.background = 'rgba(46, 213, 115, 0.2)';
+                        badge.style.borderColor = '#2ed573';
+                        badge.style.color = '#2ed573';
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading alert badge:', err);
+            }
         }
         
         // ========== Sessions Explorer Panel ==========
