@@ -1513,6 +1513,185 @@ setInterval(() => {
   }
 }, 60000);
 
+// ============================================================
+// TIMELINE API — consolidated activity timeline
+// ============================================================
+
+// Helper: collect session events from the sessions data file
+function collectSessionEvents() {
+  var events = [];
+  try {
+    var sessionsFile = '/home/openclaw/.openclaw/agents/main/sessions/sessions.json';
+    if (!fs.existsSync(sessionsFile)) return events;
+    var content = fs.readFileSync(sessionsFile, 'utf8');
+    var sessionsData = JSON.parse(content);
+    var sessionKeys = Object.keys(sessionsData);
+    var channelMap = { telegram: '📱', webchat: '🌐', discord: '💬', cron: '⏰', main: '🧠', direct: '📨' };
+
+    var sessions = sessionKeys.map(function(key) {
+      var s = sessionsData[key];
+      var parts = key.split(':');
+      var sessionType = parts[2] || 'direct';
+      var updatedAt = s.updatedAt || 0;
+      var channel = s.lastChannel || (s.deliveryContext && s.deliveryContext.channel) || sessionType;
+      var channelEmoji = channelMap[channel] || '❓';
+      return {
+        type: sessionType,
+        status: s.status || 'unknown',
+        updatedAt: updatedAt,
+        model: s.model || '?',
+        totalTokens: (s.inputTokens || 0) + (s.outputTokens || 0),
+        channel: channel,
+        channelEmoji: channelEmoji
+      };
+    });
+    sessions.sort(function(a, b) { return b.updatedAt - a.updatedAt; });
+
+    var icons = { running: '▶ ', done: '✓ ', timeout: '⏰ ' };
+    sessions.slice(0, 15).forEach(function(s) {
+      if (s.updatedAt > 0) {
+        var statusIcon = icons[s.status] || '⚪ ';
+        events.push({
+          type: 'session',
+          timestamp: s.updatedAt,
+          title: s.channelEmoji + ' ' + (s.type||'session') + ' session ' + statusIcon + s.status,
+          meta: s.model + (s.totalTokens > 0 ? ' · ' + s.totalTokens + ' tokens' : ''),
+          emoji: '🔌',
+          source: s.channel || 'openclaw'
+        });
+      }
+    });
+  } catch(e) { }
+  return events;
+}
+
+// Helper: collect alert events
+function collectAlertEvents() {
+  var events = [];
+  try {
+    if (typeof alertManager !== 'undefined' && alertManager && typeof alertManager.getAlerts === 'function') {
+      var alertsData = alertManager.getAlerts({ limit: 15 });
+      if (Array.isArray(alertsData)) {
+        alertsData.forEach(function(a) {
+          events.push({
+            type: 'alert',
+            timestamp: new Date(a.timestamp).getTime(),
+            title: a.message,
+            meta: a.source + ' · ' + a.severityLabel + (a.count > 1 ? ' (x' + a.count + ')' : ''),
+            emoji: a.emoji || '🔔',
+            source: a.source
+          });
+        });
+      }
+    }
+  } catch(e) { }
+  return events;
+}
+
+// Helper: collect service events
+function collectServiceEvents() {
+  var events = [];
+  try {
+    var workspacePath = '/home/openclaw/.openclaw/workspace';
+    var files = fs.readdirSync(workspacePath);
+    var serviceFiles = files.filter(function(f) { return f.endsWith('.service'); });
+    var timerFiles = files.filter(function(f) { return f.endsWith('.timer'); });
+    var timerMap = {};
+    timerFiles.forEach(function(tf) {
+      var baseName = tf.replace('.timer', '');
+      if (!timerMap[baseName]) timerMap[baseName] = [];
+      timerMap[baseName].push(tf);
+    });
+    var activeCount = 0;
+    var inactiveWithTimers = [];
+    serviceFiles.forEach(function(sf) {
+      var baseName = sf.replace('.service', '');
+      try {
+        var statusOut = execSync('systemctl is-active ' + baseName + ' 2>/dev/null', { timeout: 3000 }).toString().trim();
+        if (statusOut === 'active') {
+          activeCount++;
+        } else if (timerMap[baseName] && timerMap[baseName].length > 0) {
+          inactiveWithTimers.push(baseName);
+        }
+      } catch(e) {}
+    });
+    events.push({
+      type: 'service',
+      timestamp: Date.now(),
+      title: 'Services: ' + activeCount + '/' + serviceFiles.length + ' active',
+      meta: inactiveWithTimers.length > 0 ? (inactiveWithTimers.length + ' inactive with timers') : 'All services healthy',
+      emoji: '⚙️',
+      source: 'systemd'
+    });
+    if (inactiveWithTimers.length > 0) {
+      events.push({
+        type: 'service',
+        timestamp: Date.now(),
+        title: '⚠️ Inactive with timers: ' + inactiveWithTimers.join(', '),
+        meta: 'Have timer files but not registered in systemd',
+        emoji: '⚠️',
+        source: 'workspace'
+      });
+    }
+  } catch(e) { }
+  return events;
+}
+
+// Helper: collect system health event
+function collectSystemHealthEvent() {
+  try {
+    var os = require('os');
+    var cpus = os.cpus();
+    var cpuCores = cpus.length;
+    var totalMem = os.totalmem();
+    var freeMem = os.freemem();
+    var usedMem = totalMem - freeMem;
+    var memPercent = Math.round((usedMem / totalMem) * 100);
+    var loadAvg = os.loadavg();
+    var cpuLoadPercent = loadAvg[0] / cpuCores;
+    var diskUsagePercent = 0;
+    try {
+      var dfOut = execSync("df -B1 / | tail -1", { timeout: 3000 }).toString().trim().split(/\s+/);
+      if (dfOut.length >= 5) diskUsagePercent = parseInt(dfOut[4]) || 0;
+    } catch(e) {}
+    var healthScore = Math.max(0, Math.min(100, Math.round(100 - (cpuLoadPercent * 30) - (memPercent * 0.3) - (diskUsagePercent * 0.2) - (loadAvg[2] / cpuCores * 10))));
+    var healthStatus = healthScore >= 80 ? 'healthy' : healthScore >= 60 ? 'fair' : healthScore >= 40 ? 'warning' : 'critical';
+    return {
+      type: 'system',
+      timestamp: Date.now(),
+      title: 'System health: ' + healthScore + '/100 (' + healthStatus + ')',
+      meta: 'CPU: ' + loadAvg[0].toFixed(2) + ' · RAM: ' + memPercent + '% · Disk: ' + diskUsagePercent + '%',
+      emoji: '🖥️',
+      source: 'system'
+    };
+  } catch(e) { return null; }
+}
+
+// API: Get unified timeline of all events
+app.get('/api/timeline', function(req, res) {
+  try {
+    var limit = req.query.limit ? parseInt(req.query.limit) : 50;
+    var events = [];
+    events = events.concat(collectSessionEvents());
+    events = events.concat(collectAlertEvents());
+    events = events.concat(collectServiceEvents());
+    var healthEvent = collectSystemHealthEvent();
+    if (healthEvent) events.push(healthEvent);
+    events.sort(function(a, b) { return b.timestamp - a.timestamp; });
+    var typeCount = {};
+    events.forEach(function(e) { typeCount[e.type] = (typeCount[e.type] || 0) + 1; });
+    res.json({
+      success: true,
+      total: events.length,
+      types: typeCount,
+      events: events.slice(0, limit),
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Запуск сервера
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
