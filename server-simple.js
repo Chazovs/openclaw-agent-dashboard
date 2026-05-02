@@ -7,6 +7,9 @@ const AnalyticsEngine = require('./analytics-engine');
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const TradingOverview = require('./trading-overview');
+const AlertManager = require('./alert-manager');
+const CommissionAnalyzer = require('./commission-analyzer');
 
 const app = express();
 const server = http.createServer(app);
@@ -1296,6 +1299,158 @@ app.get('/api/services/:name/logs', (req, res) => {
   }
 });
 
+// ============================================================
+// TRADING OVERVIEW — consolidated trading performance panel
+// ============================================================
+
+const tradingOverview = new TradingOverview();
+const commissionAnalyzer = new CommissionAnalyzer();
+
+// API: Получить сводку по торговле (PnL, позиции, рынок, аудит)
+app.get('/api/trading/overview', async function(req, res) {
+  try {
+    const data = await tradingOverview.getOverview();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================
+// ALERT MANAGER API — unified alert & notification center
+// ============================================================
+
+// API: Получить все оповещения
+app.get('/api/alerts', (req, res) => {
+  try {
+    const options = {
+      minSeverity: req.query.minSeverity !== undefined ? parseInt(req.query.minSeverity) : undefined,
+      maxSeverity: req.query.maxSeverity !== undefined ? parseInt(req.query.maxSeverity) : undefined,
+      source: req.query.source || undefined,
+      acknowledged: req.query.acknowledged !== undefined ? req.query.acknowledged === 'true' : undefined,
+      since: req.query.since ? parseInt(req.query.since) : undefined,
+      until: req.query.until ? parseInt(req.query.until) : undefined,
+      limit: req.query.limit ? parseInt(req.query.limit) : 100
+    };
+    
+    const alerts = alertManager.getAlerts(options);
+    const summary = alertManager.getSummary();
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      count: alerts.length,
+      summary,
+      alerts
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Получить сводку по оповещениям
+app.get('/api/alerts/summary', (req, res) => {
+  try {
+    const summary = alertManager.getSummary();
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      summary
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Подтвердить оповещение
+app.post('/api/alerts/:id/acknowledge', (req, res) => {
+  try {
+    const result = alertManager.acknowledgeAlert(req.params.id);
+    res.json({
+      success: result,
+      message: result ? 'Alert acknowledged' : 'Alert not found'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Подтвердить все оповещения
+app.post('/api/alerts/acknowledge-all', express.json(), (req, res) => {
+  try {
+    const source = req.body ? req.body.source : undefined;
+    const count = alertManager.acknowledgeAll(source);
+    res.json({
+      success: true,
+      acknowledgedCount: count,
+      message: `${count} alerts acknowledged`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Сканировать систему и создать оповещения на основе текущего состояния
+app.post('/api/alerts/scan', async (req, res) => {
+  try {
+    const os = require('os');
+    
+    const cpus = os.cpus();
+    const cpuCores = cpus.length;
+    const loadAvg = os.loadavg();
+    
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const memPercent = Math.round((usedMem / totalMem) * 100);
+    
+    let diskUsagePercent = 0;
+    try {
+      const dfOutput = execSync('df -B1 / | tail -1', { timeout: 3000 }).toString().trim().split(/\s+/);
+      if (dfOutput.length >= 4) {
+        const used = parseInt(dfOutput[2]) || 0;
+        const total = parseInt(dfOutput[1]) || 1;
+        diskUsagePercent = Math.round((used / total) * 100);
+      }
+    } catch (e) {}
+    
+    const cpuLoadPercent = Math.round((loadAvg[0] / cpuCores) * 100);
+    
+    const healthScore = Math.max(0, Math.min(100, Math.round(
+      100 - (loadAvg[0] / cpuCores * 30) - (memPercent * 0.3) - (diskUsagePercent * 0.2)
+    )));
+    
+    const healthData = {
+      health: { score: healthScore, status: healthScore < 40 ? 'critical' : healthScore < 60 ? 'warning' : healthScore < 80 ? 'fair' : 'healthy' },
+      cpu: { loadPercent: cpuLoadPercent, cores: cpuCores, loadAvg1: loadAvg[0] },
+      memory: { usagePercent: memPercent, used: usedMem, total: totalMem },
+      disk: { usagePercent: diskUsagePercent }
+    };
+    
+    const newAlerts = alertManager.generateSystemAlerts(healthData, null, null);
+    const results = alertManager.addAlerts(newAlerts);
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      generated: results.length,
+      healthScore,
+      alerts: results
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Удалить все оповещения
+app.delete('/api/alerts', (req, res) => {
+  try {
+    alertManager.clearAll();
+    res.json({ success: true, message: 'All alerts cleared' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 // WebSocket соединения
 io.on('connection', (socket) => {
   console.log('New client connected');
@@ -1344,6 +1499,208 @@ setInterval(() => {
   }
 }, 60000);
 
+// ============================================================
+// TIMELINE API — consolidated activity timeline
+// ============================================================
+
+// Helper: collect session events from the sessions data file
+function collectSessionEvents() {
+  var events = [];
+  try {
+    var sessionsFile = '/home/openclaw/.openclaw/agents/main/sessions/sessions.json';
+    if (!fs.existsSync(sessionsFile)) return events;
+    var content = fs.readFileSync(sessionsFile, 'utf8');
+    var sessionsData = JSON.parse(content);
+    var sessionKeys = Object.keys(sessionsData);
+    var channelMap = { telegram: '📱', webchat: '🌐', discord: '💬', cron: '⏰', main: '🧠', direct: '📨' };
+
+    var sessions = sessionKeys.map(function(key) {
+      var s = sessionsData[key];
+      var parts = key.split(':');
+      var sessionType = parts[2] || 'direct';
+      var updatedAt = s.updatedAt || 0;
+      var channel = s.lastChannel || (s.deliveryContext && s.deliveryContext.channel) || sessionType;
+      var channelEmoji = channelMap[channel] || '❓';
+      return {
+        type: sessionType,
+        status: s.status || 'unknown',
+        updatedAt: updatedAt,
+        model: s.model || '?',
+        totalTokens: (s.inputTokens || 0) + (s.outputTokens || 0),
+        channel: channel,
+        channelEmoji: channelEmoji
+      };
+    });
+    sessions.sort(function(a, b) { return b.updatedAt - a.updatedAt; });
+
+    var icons = { running: '▶ ', done: '✓ ', timeout: '⏰ ' };
+    sessions.slice(0, 15).forEach(function(s) {
+      if (s.updatedAt > 0) {
+        var statusIcon = icons[s.status] || '⚪ ';
+        events.push({
+          type: 'session',
+          timestamp: s.updatedAt,
+          title: s.channelEmoji + ' ' + (s.type||'session') + ' session ' + statusIcon + s.status,
+          meta: s.model + (s.totalTokens > 0 ? ' · ' + s.totalTokens + ' tokens' : ''),
+          emoji: '🔌',
+          source: s.channel || 'openclaw'
+        });
+      }
+    });
+  } catch(e) { }
+  return events;
+}
+
+// Helper: collect alert events
+function collectAlertEvents() {
+  var events = [];
+  try {
+    if (typeof alertManager !== 'undefined' && alertManager && typeof alertManager.getAlerts === 'function') {
+      var alertsData = alertManager.getAlerts({ limit: 15 });
+      if (Array.isArray(alertsData)) {
+        alertsData.forEach(function(a) {
+          events.push({
+            type: 'alert',
+            timestamp: new Date(a.timestamp).getTime(),
+            title: a.message,
+            meta: a.source + ' · ' + a.severityLabel + (a.count > 1 ? ' (x' + a.count + ')' : ''),
+            emoji: a.emoji || '🔔',
+            source: a.source
+          });
+        });
+      }
+    }
+  } catch(e) { }
+  return events;
+}
+
+// Helper: collect service events
+function collectServiceEvents() {
+  var events = [];
+  try {
+    var workspacePath = '/home/openclaw/.openclaw/workspace';
+    var files = fs.readdirSync(workspacePath);
+    var serviceFiles = files.filter(function(f) { return f.endsWith('.service'); });
+    var timerFiles = files.filter(function(f) { return f.endsWith('.timer'); });
+    var timerMap = {};
+    timerFiles.forEach(function(tf) {
+      var baseName = tf.replace('.timer', '');
+      if (!timerMap[baseName]) timerMap[baseName] = [];
+      timerMap[baseName].push(tf);
+    });
+    var activeCount = 0;
+    var inactiveWithTimers = [];
+    serviceFiles.forEach(function(sf) {
+      var baseName = sf.replace('.service', '');
+      try {
+        var statusOut = execSync('systemctl is-active ' + baseName + ' 2>/dev/null', { timeout: 3000 }).toString().trim();
+        if (statusOut === 'active') {
+          activeCount++;
+        } else if (timerMap[baseName] && timerMap[baseName].length > 0) {
+          inactiveWithTimers.push(baseName);
+        }
+      } catch(e) {}
+    });
+    events.push({
+      type: 'service',
+      timestamp: Date.now(),
+      title: 'Services: ' + activeCount + '/' + serviceFiles.length + ' active',
+      meta: inactiveWithTimers.length > 0 ? (inactiveWithTimers.length + ' inactive with timers') : 'All services healthy',
+      emoji: '⚙️',
+      source: 'systemd'
+    });
+    if (inactiveWithTimers.length > 0) {
+      events.push({
+        type: 'service',
+        timestamp: Date.now(),
+        title: '⚠️ Inactive with timers: ' + inactiveWithTimers.join(', '),
+        meta: 'Have timer files but not registered in systemd',
+        emoji: '⚠️',
+        source: 'workspace'
+      });
+    }
+  } catch(e) { }
+  return events;
+}
+
+// Helper: collect system health event
+function collectSystemHealthEvent() {
+  try {
+    var os = require('os');
+    var cpus = os.cpus();
+    var cpuCores = cpus.length;
+    var totalMem = os.totalmem();
+    var freeMem = os.freemem();
+    var usedMem = totalMem - freeMem;
+    var memPercent = Math.round((usedMem / totalMem) * 100);
+    var loadAvg = os.loadavg();
+    var cpuLoadPercent = loadAvg[0] / cpuCores;
+    var diskUsagePercent = 0;
+    try {
+      var dfOut = execSync("df -B1 / | tail -1", { timeout: 3000 }).toString().trim().split(/\s+/);
+      if (dfOut.length >= 5) diskUsagePercent = parseInt(dfOut[4]) || 0;
+    } catch(e) {}
+    var healthScore = Math.max(0, Math.min(100, Math.round(100 - (cpuLoadPercent * 30) - (memPercent * 0.3) - (diskUsagePercent * 0.2) - (loadAvg[2] / cpuCores * 10))));
+    var healthStatus = healthScore >= 80 ? 'healthy' : healthScore >= 60 ? 'fair' : healthScore >= 40 ? 'warning' : 'critical';
+    return {
+      type: 'system',
+      timestamp: Date.now(),
+      title: 'System health: ' + healthScore + '/100 (' + healthStatus + ')',
+      meta: 'CPU: ' + loadAvg[0].toFixed(2) + ' · RAM: ' + memPercent + '% · Disk: ' + diskUsagePercent + '%',
+      emoji: '🖥️',
+      source: 'system'
+    };
+  } catch(e) { return null; }
+}
+
+// ============================================================
+// COMMISSION & FEE ANALYZER API
+// ============================================================
+
+// API: Получить анализ комиссий по всем ботам
+app.get('/api/commissions', async function(req, res) {
+  try {
+    const data = await commissionAnalyzer.getFees();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Принудительный сброс кэша комиссий
+app.post('/api/commissions/refresh', function(req, res) {
+  try {
+    commissionAnalyzer.clearCache();
+    res.json({ success: true, message: 'Cache cleared' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// API: Get unified timeline of all events
+app.get('/api/timeline', function(req, res) {
+  try {
+    var limit = req.query.limit ? parseInt(req.query.limit) : 50;
+    var events = [];
+    events = events.concat(collectSessionEvents());
+    events = events.concat(collectAlertEvents());
+    events = events.concat(collectServiceEvents());
+    var healthEvent = collectSystemHealthEvent();
+    if (healthEvent) events.push(healthEvent);
+    events.sort(function(a, b) { return b.timestamp - a.timestamp; });
+    var typeCount = {};
+    events.forEach(function(e) { typeCount[e.type] = (typeCount[e.type] || 0) + 1; });
+    res.json({
+      success: true,
+      total: events.length,
+      types: typeCount,
+      events: events.slice(0, limit),
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 // Запуск сервера
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
